@@ -1,0 +1,144 @@
+[gd_scene load_steps=2 format=3 uid="uid://b4w7f1x0w7qjq"]
+
+[ext_resource type="Script" path="res://TokenTool.gd" id="1_0qj2x"]
+[ext_resource type="PackedScene" uid="uid://c6v0g3dxlc0w8" path="res://OverlayLibrary.tscn" id="2_abcde"] # Placeholder UID, actual will be generated
+
+[node name="TokenTool" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_0qj2x")
+
+[node name="BaseImageDisplay" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1 # MOUSE_FILTER_STOP
+expand_mode = 2 # EXPAND_IGNORE_SIZE
+stretch_mode = 5 # STRETCH_KEEP_ASPECT_CENTERED
+
+[node name="OverlayDisplay" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -128.0
+offset_top = -128.0
+offset_right = 128.0
+offset_bottom = 128.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 0
+
+[node name="ButtonContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -177.0
+offset_right = 177.0
+offset_bottom = 31.0
+grow_horizontal = 2
+
+[node name="LoadImageButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "Load Image"
+
+[node name="LoadOverlayButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "Load Overlay"
+
+[node name="ExportTokenButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "Export Token"
+
+[node name="ChooseOverlayButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "Choose Overlay"
+
+[node name="ExportPortraitButton" type="Button" parent="ButtonContainer"]
+layout_mode = 2
+text = "Export Portrait"
+
+[node name="ImageFileDialog" type="FileDialog" parent="."]
+title = "Open Image"
+access = 2
+filters = PackedStringArray("*.png ; PNG Images", "*.jpg ; JPG Images", "*.jpeg ; JPEG Images")
+visible = false
+
+[node name="OverlayFileDialog" type="FileDialog" parent="."]
+title = "Open Overlay"
+access = 2
+filters = PackedStringArray("*.png ; PNG Images")
+visible = false
+
+[node name="ExportFileDialog" type="FileDialog" parent="."]
+title = "Save Token As..."
+access = 2
+mode = 0
+filters = PackedStringArray("*.png ; PNG Image")
+visible = false
+
+[node name="ControlsContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 20.0
+offset_top = -100.0
+offset_right = 160.0
+offset_bottom = 100.0
+visible = false
+
+[node name="ZoomLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Zoom:"
+
+[node name="ZoomSlider" type="HSlider" parent="ControlsContainer"]
+layout_mode = 2
+min_value = 0.1
+max_value = 5.0
+step = 0.05
+value = 1.0
+
+[node name="PanXLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Pan X:"
+
+[node name="PanXSlider" type="HSlider" parent="ControlsContainer"]
+layout_mode = 2
+min_value = -500.0
+max_value = 500.0
+step = 1.0
+
+[node name="OverlayLibraryInstance" parent="." instance=ExtResource("2_abcde")]
+layout_mode = 1 # Ensure it's not 0,0,0,0 by default
+anchors_preset = 8 # Center
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0 # Example size
+offset_top = -150.0  # Example size
+offset_right = 200.0 # Example size
+offset_bottom = 150.0# Example size
+visible = false
+
+[node name="PanYLabel" type="Label" parent="ControlsContainer"]
+layout_mode = 2
+text = "Pan Y:"
+
+[node name="PanYSlider" type="HSlider" parent="ControlsContainer"]
+layout_mode = 2
+min_value = -500.0
+max_value = 500.0
+step = 1.0
