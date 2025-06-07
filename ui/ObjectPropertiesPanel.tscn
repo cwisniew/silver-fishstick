@@ -1,0 +1,110 @@
+[gd_scene format=3 uid="uid://b8jqwcn0wqk7x"]
+
+[node name="ObjectPropertiesPanel" type="PanelContainer"]
+visible = false # Hidden by default
+custom_minimum_size = Vector2(250, 0) # Default width
+anchors_preset = 2 # Top Right Anchor
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -250.0 # Assuming a width of 250
+grow_horizontal = 0
+grow_vertical = 2
+# Example StyleBox (using a simple flat panel for now, can be customized in editor)
+# theme_override_styles/panel = SubResource("PanelBoxFlat_somesid")
+
+[node name="PropertiesVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 0) # VBox takes panel width, this is inner min
+
+[node name="AssetNameHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+
+[node name="LabelAssetNamePrefix" type="Label" parent="PropertiesVBox/AssetNameHBox"]
+layout_mode = 2
+text = "Asset:"
+
+[node name="AssetNameLabel" type="Label" parent="PropertiesVBox/AssetNameHBox"]
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand
+text = "[ObjectName]"
+clip_text = true # Clip if name is too long
+
+[node name="HSeparator1" type="HSeparator" parent="PropertiesVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 4) # Add some spacing
+
+[node name="RotationHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center children vertically
+
+[node name="LabelRotation" type="Label" parent="PropertiesVBox/RotationHBox"]
+layout_mode = 2
+text = "Rotation:"
+
+[node name="RotationSpinBox" type="SpinBox" parent="PropertiesVBox/RotationHBox"]
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand
+custom_minimum_size = Vector2(100, 0)
+min_value = -3600.0
+max_value = 3600.0
+step = 1.0 # Could be 5.0 or 15.0 for coarser control
+value = 0.0
+suffix = "deg"
+rounded = false # Allow float values if step is float
+
+[node name="ScaleLabelTitle" type="Label" parent="PropertiesVBox"] # Optional section label
+layout_mode = 2
+text = "Scale:"
+# horizontal_alignment = 1 # Center if desired
+
+[node name="ScaleXHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelScaleX" type="Label" parent="PropertiesVBox/ScaleXHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(30, 0)
+text = " X:"
+alignment = 2 # Right align " X:" text
+
+[node name="ScaleXSpinBox" type="SpinBox" parent="PropertiesVBox/ScaleXHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(80, 0)
+min_value = 0.01
+max_value = 100.0
+step = 0.05
+value = 1.0
+rounded = false
+
+[node name="ScaleYHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelScaleY" type="Label" parent="PropertiesVBox/ScaleYHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(30, 0)
+text = " Y:"
+alignment = 2
+
+[node name="ScaleYSpinBox" type="SpinBox" parent="PropertiesVBox/ScaleYHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(80, 0)
+min_value = 0.01
+max_value = 100.0
+step = 0.05
+value = 1.0
+rounded = false
+
+[node name="HSeparator2" type="HSeparator" parent="PropertiesVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 4)
+
+[node name="DeleteObjectButton" type="Button" parent="PropertiesVBox"]
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand, or 4 for ShrinkCenter if preferred
+text = "Delete Selected Object"
+# icon = ExtResource("path/to/delete_icon.png") # Optional

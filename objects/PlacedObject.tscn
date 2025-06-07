@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://dwoa1x0y5s0j1"]
+
+[ext_resource type="Script" path="res://objects/PlacedObject.cs" id="1_obj_script"]
+
+[node name="PlacedObject" type="Node2D"]
+script = ExtResource("1_obj_script")
+
+[node name="ObjectSprite" type="Sprite2D" parent="."]
+centered = true
+# Texture will be set by code
+
+[node name="ObjectClickArea" type="Area2D" parent="."]
+# CollisionLayer/Mask can be set here if specific values are known, otherwise defaults.
+# Example: collision_layer = 2, collision_mask = 0
+# For now, defaults are fine as picking might use intersect_point which doesn't always need mask.
+
+[node name="ObjectCollisionShape" type="CollisionShape2D" parent="ObjectClickArea"]
+# Shape will be set by code.

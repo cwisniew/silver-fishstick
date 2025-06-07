@@ -1,0 +1,149 @@
+[gd_scene load_steps=2 format=3 uid="uid://dcvxlh0eqbqn0"]
+
+[ext_resource type="Script" path="res://ui/AssetLibraryPanel.cs" id="1_abcde"]
+
+[node name="AssetLibraryPanel" type="PanelContainer"]
+script = ExtResource("1_abcde")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ImportButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Import New Asset..."
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3 # Fill remaining vertical space
+
+[node name="ImagePreview" type="TextureRect" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3 # Fill available horizontal space
+size_flags_vertical = 3 # Fill available vertical space
+min_custom_minimum_size = Vector2(200, 200)
+expand_mode = 1 # KeepAspectCentered
+stretch_mode = 5 # KeepAspectCentered
+
+[node name="MetadataInputContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3 # Fill available horizontal space
+
+[node name="HBoxName" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer"]
+layout_mode = 2
+
+[node name="LabelName" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxName"]
+layout_mode = 2
+text = "Asset Name:"
+
+[node name="AssetNameLineEdit" type="LineEdit" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxName"]
+layout_mode = 2
+size_flags_horizontal = 3 # Fill HBox
+
+[node name="HBoxCategory" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer"]
+layout_mode = 2
+
+[node name="LabelCategory" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxCategory"]
+layout_mode = 2
+text = "Category:"
+
+[node name="CategoryOptionButton" type="OptionButton" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxCategory"]
+layout_mode = 2
+size_flags_horizontal = 3 # Fill HBox
+
+[node name="HBoxIsSpritesheet" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer"]
+layout_mode = 2
+
+[node name="LabelIsSpritesheet" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxIsSpritesheet"]
+layout_mode = 2
+text = "Is Spritesheet/TileSet:"
+
+[node name="IsSpritesheetCheckBox" type="CheckBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/HBoxIsSpritesheet"]
+layout_mode = 2
+
+[node name="SpritesheetSettingsContainer" type="VBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer"]
+layout_mode = 2
+
+[node name="HBoxTileWidth" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelTileWidth" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxTileWidth"]
+layout_mode = 2
+text = "Tile Width:"
+
+[node name="TileWidthSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxTileWidth"]
+layout_mode = 2
+min_value = 1.0
+value = 16.0
+step = 1.0
+allow_greater = true
+
+[node name="HBoxTileHeight" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelTileHeight" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxTileHeight"]
+layout_mode = 2
+text = "Tile Height:"
+
+[node name="TileHeightSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxTileHeight"]
+layout_mode = 2
+min_value = 1.0
+value = 16.0
+step = 1.0
+allow_greater = true
+
+[node name="HBoxSeparationX" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelSeparationX" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxSeparationX"]
+layout_mode = 2
+text = "Separation X:"
+
+[node name="SeparationXSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxSeparationX"]
+layout_mode = 2
+step = 1.0
+allow_greater = true
+
+[node name="HBoxSeparationY" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelSeparationY" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxSeparationY"]
+layout_mode = 2
+text = "Separation Y:"
+
+[node name="SeparationYSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxSeparationY"]
+layout_mode = 2
+step = 1.0
+allow_greater = true
+
+[node name="HBoxMarginX" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelMarginX" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxMarginX"]
+layout_mode = 2
+text = "Margin X:"
+
+[node name="MarginXSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxMarginX"]
+layout_mode = 2
+step = 1.0
+allow_greater = true
+
+[node name="HBoxMarginY" type="HBoxContainer" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer"]
+layout_mode = 2
+
+[node name="LabelMarginY" type="Label" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxMarginY"]
+layout_mode = 2
+text = "Margin Y:"
+
+[node name="MarginYSpinBox" type="SpinBox" parent="VBoxContainer/HSplitContainer/MetadataInputContainer/SpritesheetSettingsContainer/HBoxMarginY"]
+layout_mode = 2
+step = 1.0
+allow_greater = true
+
+[node name="ConfirmImportButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Confirm Import"

@@ -1,0 +1,42 @@
+[gd_resource type="TileSet" load_steps=2 format=3 uid="uid://cwtysq7p0b1x0"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_autowall16"]
+resource_name = "AutoWallSet16_Source"
+texture = ExtResource("res://imported_assets/images/AutoWallSet16.png") # Path to the (conceptually) copied image
+texture_region_size = Vector2i(16, 16)
+0:0/0 = 0
+0:0/0/name = "tile_0_0"
+1:0/0 = 0
+1:0/0/name = "tile_1_0"
+2:0/0 = 0
+2:0/0/name = "tile_2_0"
+3:0/0 = 0
+3:0/0/name = "tile_3_0"
+0:1/0 = 0
+0:1/0/name = "tile_0_1"
+1:1/0 = 0
+1:1/0/name = "tile_1_1"
+2:1/0 = 0
+2:1/0/name = "tile_2_1"
+3:1/0 = 0
+3:1/0/name = "tile_3_1"
+0:2/0 = 0
+0:2/0/name = "tile_0_2"
+1:2/0 = 0
+1:2/0/name = "tile_1_2"
+2:2/0 = 0
+2:2/0/name = "tile_2_2"
+3:2/0 = 0
+3:2/0/name = "tile_3_2"
+0:3/0 = 0
+0:3/0/name = "tile_0_3"
+1:3/0 = 0
+1:3/0/name = "tile_1_3"
+2:3/0 = 0
+2:3/0/name = "tile_2_3"
+3:3/0 = 0
+3:3/0/name = "tile_3_3"
+
+[resource]
+tile_size = Vector2i(16, 16)
+sources/0 = SubResource("TileSetAtlasSource_autowall16")

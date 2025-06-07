@@ -1,0 +1,82 @@
+[gd_scene load_steps=8 format=3 uid="uid://bu2yvxafbfh0b"]
+
+[ext_resource type="Script" path="res://MainScene.cs" id="1_main_cs"]
+[ext_resource type="TileSet" path="res://ProjectMasterTileSet.tres" id="2_master_tileset"] # Path Updated
+[ext_resource type="Script" path="res://TileDrawer.cs" id="3_abcde"]
+[ext_resource type="PackedScene" uid="uid://dcvxlh0eqbqn0" path="res://ui/AssetLibraryPanel.tscn" id="4_asset_lib_panel"]
+[ext_resource type="Script" path="res://Scripts/Core/MapCameraController.cs" id="5_cam_ctrl"]
+[ext_resource type="PackedScene" uid="uid://b0wcnkbrq1xnm" path="res://ui/LayersPanel.tscn" id="6_layers_panel_scene"]
+[ext_resource type="PackedScene" uid="uid://b8jqwcn0wqk7x" path="res://ui/ObjectPropertiesPanel.tscn" id="7_obj_props_panel"]
+
+
+[node name="MainScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main_cs")
+
+[node name="ToolbarPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 100.0
+offset_bottom = 1080.0
+
+[node name="LayersPanel" parent="." instance=ExtResource("6_layers_panel_scene")]
+layout_mode = 1
+anchors_preset = 0 # Reset anchors if needed, or adjust as per specific layout goals.
+anchor_left = 0.0 # Default from PanelContainer if not overridden
+anchor_right = 0.0 # Default from PanelContainer if not overridden
+offset_left = 1820.0 # Example: Position it to the right, assuming 1920 width
+offset_right = 1920.0 # Example: Give it a width of 100
+offset_bottom = 1080.0 # Full height
+# The original LayersPanel was anchored to the right. Let's try to replicate that.
+# Anchors: Top-Right (Preset 3) or manually set:
+# anchor_left = 1.0
+# anchor_right = 1.0
+# anchor_bottom = 1.0
+# offset_left = -WIDTH_OF_PANEL (e.g., -300 if width is 300)
+# offset_right = 0
+# offset_top = 0
+# offset_bottom = 0
+# For now, let's use the provided offsets but ensure it's an instance.
+# The PanelContainer in LayersPanel.tscn has size_flags_horizontal = 3, so it will expand.
+# We need to control its container (LayersPanel instance itself)
+# Let's try anchoring it to the right like the original Panel.
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0 # Keep full height
+offset_left = -250.0 # Give it a width of 250 for example
+offset_right = 0.0 # Anchor to right edge
+offset_top = 0.0 # Anchor to top
+offset_bottom = 0.0 # Anchor to bottom
+grow_horizontal = 0 # Original was 0, but PanelContainer will want to expand. Set to 0 if parent controls it.
+
+[node name="TileMap" type="TileMap" parent="." groups=["TileMapGroup"]]
+tile_set = ExtResource("2_master_tileset") # Changed to MasterTileSet
+format = 2
+script = ExtResource("3_abcde")
+
+[node name="AssetLibraryPanelInstance" parent="." instance=ExtResource("4_asset_lib_panel")]
+visible = false # Initially hidden
+layout_mode = 1 # Ensure it's treated as a control for layout if needed, though PanelContainer might handle its own size.
+anchors_preset = 15 # Optional: make it fill the screen if it's a top-level panel
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MapCamera" type="Camera2D" parent="."]
+position = Vector2(0, 0) # Adjust as needed, e.g. center of screen or TileMap origin
+zoom = Vector2(1, 1) # Default zoom
+enabled = true
+script = ExtResource("5_cam_ctrl")
+
+[node name="PlacedObjectsRoot" type="Node2D" parent="."]
+position = Vector2(0, 0) # Default position
+
+[node name="ObjectPropertiesPanelInstance" parent="." instance=ExtResource("7_obj_props_panel")]
+# Visibility is false by default in its own scene.
+# Layout (anchored right, width 250) is also set in its own scene.
+# No specific layout overrides needed here unless we want to change its default anchoring/sizing.
+# Removed BasicTiles.tres, its role is superseded by MasterTileSet.tres
+# The script for TileDrawer.cs (id="3_abcde") is now correctly listed above.

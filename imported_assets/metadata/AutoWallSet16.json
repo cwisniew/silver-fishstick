@@ -1,0 +1,13 @@
+{
+	"AssetName": "AutoWallSet16",
+	"ImageFileName": "AutoWallSet16.png",
+	"Category": "AutoTileWall",
+	"IsSpritesheet": true,
+	"TileWidth": 16,
+	"TileHeight": 16,
+	"SeparationX": 0,
+	"SeparationY": 0,
+	"MarginX": 0,
+	"MarginY": 0,
+	"TileSetResourcePath": "res://imported_assets/tilesets/AutoWallSet16.tres"
+}

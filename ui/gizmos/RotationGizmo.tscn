@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3 uid="uid://cvpmyf2q1tgyd"]
+
+[ext_resource type="Script" path="res://ui/gizmos/RotationGizmo.cs" id="1_gizmo_script"]
+
+[node name="RotationGizmo" type="Node2D"]
+visible = false # Hidden by default
+script = ExtResource("1_gizmo_script")
+z_index = 4000 # High Z-index to render on top of most UI elements if parented to MainScene directly
+# Alternatively, parent to a CanvasLayer.
+
+[node name="GizmoHandleSprite" type="Sprite2D" parent="."]
+# Texture will be set by the script (RotationGizmo.cs) if not found or if placeholder is generated.
+# Centered, Scale, and Modulate are also set by the script's _Ready to ensure defaults.
+# If you have a specific icon, you can assign its path here:
+# texture = ExtResource("res://assets/icons/rotate_gizmo_handle.png")
+scale = Vector2(1.5, 1.5)
+modulate = Color(1, 1, 1, 0.75)
+centered = true # Ensure this is true
+position = Vector2(30, 0) # Offset the handle from the Gizmo's origin (which will be at object's center)
+                          # This makes the handle itself appear, e.g., 30px to the right of the object's center.
+                          # The RotationGizmo (root Node2D) will be rotated.
+                          # If handle is at (0,0), it rotates around its own center at object's center.
+                          # An offset handle makes it easier to see the rotation direction.
+                          # Let's use a smaller offset, or none if the sprite itself indicates direction well.
+                          # For a handle that's a circle with a line, (0,0) is fine as the line shows rotation.
+                          # If the handle is just a dot, an offset is better.
+                          # The placeholder has a line, so (0,0) is okay for the sprite's position.
+position = Vector2(0, 0) # Resetting to (0,0) as placeholder has directional line.
+                         # The entire RotationGizmo Node2D will be at object's center and rotated.
+                         # The GizmoHandleSprite itself, if also at (0,0), will rotate around its center.
+                         # If we want a handle *offset* from the object center that then orbits, this GizmoHandleSprite would be offset.
+                         # For now, centered handle:

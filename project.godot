@@ -14,6 +14,12 @@ config/name="New Game Project"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+AssetManager="*res://AssetManager.cs"
+UndoRedoManager="*res://Scripts/Core/UndoRedoManager.cs"
+GlobalSettings="*res://Scripts/Core/GlobalSettings.cs"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

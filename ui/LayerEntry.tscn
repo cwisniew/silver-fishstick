@@ -1,0 +1,56 @@
+[gd_scene load_steps=1 format=3 uid="uid://c1evm3x0qg0vx"]
+
+[node name="LayerEntry" type="PanelContainer"] # Using PanelContainer for a slight border/padding
+custom_minimum_size = Vector2(150, 0) # Ensure it has some width to fill ScrollContainer
+size_flags_horizontal = 3 # Expand horizontally
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+alignment = 1 # Vertical center alignment for children
+
+[node name="VisibleCheckBox" type="CheckBox" parent="HBoxContainer"]
+layout_mode = 2
+tooltip_text = "Toggle Layer Visibility"
+focus_mode = 0 # None
+
+[node name="ZIndexSpinBox" type="SpinBox" parent="HBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0) # Ensure it's wide enough
+min_value = -100.0
+max_value = 100.0
+step = 1.0
+value = 0.0 # Default Z-index
+focus_mode = 0 # None
+# size_flags_horizontal = 4 # ShrinkCenter or 0 for default behavior (can be adjusted)
+
+[node name="LayerNameLineEdit" type="LineEdit" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand
+placeholder_text = "Layer Name"
+editable = true # Changed to true
+select_all_on_focus = true # Added for better UX
+
+[node name="SelectLayerButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+tooltip_text = "Select this layer for drawing"
+toggle_mode = true
+text = "Select"
+
+[node name="MoveUpButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+tooltip_text = "Move Layer Up"
+text = "Up" # Or use an icon with text = ""
+
+[node name="MoveDownButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+tooltip_text = "Move Layer Down"
+text = "Down" # Or use an icon
+
+# DeleteButtonInRow is omitted for now as per revised plan for this step
+# [node name="DeleteButtonInRow" type="Button" parent="HBoxContainer"]
+# layout_mode = 2
+# tooltip_text = "Delete this layer"
+# text = "X"
+# disabled = true # Initially
