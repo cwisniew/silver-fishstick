@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://b1x2y3z4a5b6"]
+
+[ext_resource type="Script" path="res://Token.cs" id="1_xyz12"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_abcde"]
+size = Vector2(128, 128)
+
+[node name="TokenSprite" type="Sprite2D" script="res://Token.cs"]
+texture_filter = 1 # Prevent blurry sprites
+script = ExtResource("1_xyz12")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_abcde")

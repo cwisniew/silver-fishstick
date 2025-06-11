@@ -1,0 +1,131 @@
+[gd_scene load_steps=3 format=3 uid="uid://c600x0y0x0y0"] # Adjusted load_steps
+
+[ext_resource type="Script" path="res://MainScene.cs" id="1_abcde"]
+[ext_resource type="Script" path="res://ChatLog.cs" id="2_xyz78"] # This was missing in the previous diff's SEARCH but present in file
+[ext_resource type="Script" path="res://CombatTracker.cs" id="3_ghjkl")]
+[ext_resource type="Script" path="res://DrawingOverlay.cs" id="4_abc12")]
+
+[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton")]
+script = ExtResource("1_abcde")
+chatLogNode = NodePath("ChatUIContainer/ChatDisplay")
+chatMessageInput = NodePath("ChatUIContainer/ChatMessageInput")
+combatTrackerPanel = NodePath("CombatTrackerPanel")
+trackerListVBox = NodePath("CombatTrackerPanel/VBoxContainer/TrackerListVBox")
+addTokenButton = NodePath("CombatTrackerPanel/VBoxContainer/ControlsHBox/AddTokenButton")
+nextTurnButton = NodePath("CombatTrackerPanel/VBoxContainer/ControlsHBox/NextTurnButton")
+startCombatButton = NodePath("CombatTrackerPanel/VBoxContainer/ControlsHBox/StartCombatButton")
+resetCombatButton = NodePath("CombatTrackerPanel/VBoxContainer/ControlsHBox/ResetCombatButton")
+roundCounterLabel = NodePath("CombatTrackerPanel/VBoxContainer/RoundCounterLabel")
+combatTracker = NodePath("CombatTrackerPanel") # The CombatTracker script is attached to the Panel.
+
+[node name="ChatUIContainer" type="VBoxContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -200.0 # Height of the chat UI
+offset_right = 400.0 # Width of the chat UI
+grow_vertical = 0
+
+[node name="ChatDisplay" type="RichTextLabel" parent="ChatUIContainer"]
+layout_mode = 2
+size_flags_vertical = 3 # Fill VBoxContainer
+bbcode_enabled = true
+scroll_following = true
+custom_minimum_size = Vector2(0, 100)
+autowrap_mode = TextServer.AUTOWRAP_WORD
+script = ExtResource("2_xyz78") # This is correct for ChatLog.cs
+
+[node name="ChatMessageInput" type="LineEdit" parent="ChatUIContainer"]
+layout_mode = 2
+placeholder_text = "Enter message or dice roll..."
+caret_blink = true
+
+[node name="CombatTrackerPanel" type="PanelContainer" parent="."]
+anchors_preset = 1 # Top-right
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -300.0 # Width of the combat tracker
+offset_bottom = 400.0 # Height of the combat tracker
+grow_horizontal = 0 # Keep size fixed horizontally
+script = ExtResource("3_ghjkl") # CombatTracker script will be attached here
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CombatTrackerPanel"]
+layout_mode = 2 # Fill PanelContainer
+
+[node name="TrackerListVBox" type="VBoxContainer" parent="CombatTrackerPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3 # Make it expand to fill available vertical space in its parent VBox
+custom_minimum_size = Vector2(0, 100) # Ensure it has some minimum height
+
+[node name="ControlsHBox" type="HBoxContainer" parent="CombatTrackerPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1 # Center align buttons in HBox
+
+[node name="AddTokenButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"]
+layout_mode = 2
+text = "Add Selected"
+
+[node name="StartCombatButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"]
+layout_mode = 2
+text = "Start Combat"
+
+[node name="NextTurnButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"]
+layout_mode = 2
+text = "Next Turn"
+
+[node name="ResetCombatButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"]
+layout_mode = 2
+text = "Reset Combat"
+
+[node name="ChangeTokenImageButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"]
+layout_mode = 2
+text = "Set Token Image"
+
+[node name="LoadMapButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/ControlsHBox"] # Adding LoadMapButton here for now
+layout_mode = 2
+text = "Load Map"
+
+[node name="RoundCounterLabel" type="Label" parent="CombatTrackerPanel/VBoxContainer"]
+layout_mode = 2
+text = "Round: 0"
+horizontal_alignment = 1 # Center alignment for the text
+
+[node name="TokenImageFileDialog" type="FileDialog" parent="."]
+title = "Select Token Image"
+initial_position = 2 # Center
+access = 2 # FileSystem
+filters = PackedStringArray("*.png ; PNG Images", "*.jpg ; JPG Images", "*.jpeg ; JPEG Images", "*.webp ; WebP Images")
+root_subfolder = "assets/tokens"
+visible = false
+
+[node name="MapBackgroundSprite" type="Sprite2D" parent="."]
+z_index = -10
+centered = false # Usually maps are loaded from top-left
+
+[node name="MapFileDialog" type="FileDialog" parent="."]
+title = "Select Map Image"
+initial_position = 2
+access = 2 # FileSystem
+filters = PackedStringArray("*.png ; PNG Images", "*.jpg ; JPG Images", "*.jpeg ; JPEG Images", "*.webp ; WebP Images")
+root_subfolder = "assets/maps"
+visible = false
+
+[node name="DrawingOverlay" type="Node2D" parent="."]
+z_index = -5 # Above map, below tokens (assuming tokens are at z_index >= 0)
+script = ExtResource("4_abc12")
+
+[node name="DrawingControlsHBox" type="HBoxContainer" parent="CombatTrackerPanel/VBoxContainer"] # Adding drawing controls here
+layout_mode = 2
+alignment = 1
+
+[node name="ToggleDrawModeButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Draw: OFF"
+
+[node name="ClearDrawingsButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Clear Drawings"
+
+[node name="ToggleMeasureModeButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Measure: OFF"
