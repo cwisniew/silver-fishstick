@@ -7,8 +7,9 @@
 [ext_resource type="PackedScene" uid="uid://fogwar123abc" path="res://FogOfWarScene.tscn" id="5_def45")]
 [ext_resource type="PackedScene" uid="uid://handout_disp_123" path="res://HandoutDisplay.tscn" id="6_xyz78")]
 [ext_resource type="PackedScene" uid="uid://decks_panel_scene" path="res://DecksPanel.tscn" id="7_decks_panel")]
+[ext_resource type="Script" path="res://NetworkManager.cs" id="8_net_mgr")]
 
-[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog")]
+[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog", "networkManagerNode", "serverIpInput", "portInput", "hostButton", "joinButton", "disconnectButton", "networkStatusLabel", "playerListDisplay", "spawnTestNetworkTokenButton")]
 script = ExtResource("1_abcde")
 chatLogNode = NodePath("ChatUIContainer/ChatDisplay")
 chatMessageInput = NodePath("ChatUIContainer/ChatMessageInput")
@@ -273,6 +274,71 @@ wrap_mode = 1 # Boundary
 layout_mode = 2
 size_flags_horizontal = 4 # Center
 text = "Run Macro"
+
+[node name="NetworkManagerNode" type="Node" parent="."]
+script = ExtResource("8_net_mgr")
+
+[node name="NetworkPanel" type="PanelContainer" parent="."] # Simple panel for network controls
+anchors_preset = 5 # Top Left
+anchor_right = 0.0 # Reset from preset
+anchor_bottom = 0.0 # Reset from preset
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 400.0 # Width
+offset_bottom = 150.0 # Height
+grow_horizontal = 2 # Default
+grow_vertical = 2   # Default
+
+
+[node name="VBoxContainer" type="VBoxContainer" parent="NetworkPanel"]
+layout_mode = 2
+
+[node name="NetworkStatusLabel" type="Label" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+text = "Network Status: Idle"
+horizontal_alignment = 1
+
+[node name="HBoxInputs" type="HBoxContainer" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="ServerIpInput" type="LineEdit" parent="NetworkPanel/VBoxContainer/HBoxInputs"]
+layout_mode = 2
+size_flags_horizontal = 3 # Expand
+text = "127.0.0.1"
+placeholder_text = "Server IP"
+
+[node name="PortInput" type="LineEdit" parent="NetworkPanel/VBoxContainer/HBoxInputs"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "7777" # Default port from NetworkManager
+placeholder_text = "Port"
+
+[node name="HBoxButtons" type="HBoxContainer" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1 # Center buttons
+
+[node name="HostButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
+layout_mode = 2
+text = "Host Game"
+
+[node name="JoinButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
+layout_mode = 2
+text = "Join Game"
+
+[node name="DisconnectButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
+layout_mode = 2
+text = "Disconnect"
+disabled = true # Initially disabled
+
+[node name="SpawnTestNetworkTokenButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"] # Added here
+layout_mode = 2
+text = "Spawn Net Token (Host)"
+
+[node name="PlayerListDisplay" type="ItemList" parent="NetworkPanel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60) # Min height for a few items
+size_flags_vertical = 3 # Expand if VBox has extra space
+
 
 [node name="CampaignFileDialog" type="FileDialog" parent="."]
 title = "Save/Load Campaign"

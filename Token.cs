@@ -37,7 +37,7 @@ public partial class Token : CharacterBody2D
 
 	private List<Vector2> _currentPath = null;
 	private int _currentPathIndex = 0;
-	private Vector2 _originalDragPosition;
+	private Vector2 _originalDragGlobalPosition; // Store global position at drag start
 	private bool _isBeingDragged = false;
 
 	public override void _Ready()
@@ -66,36 +66,75 @@ public partial class Token : CharacterBody2D
 
 	public void StartDrag()
 	{
-		if (_currentPath != null) // Cancel path movement if drag starts
+		if (_currentPath != null)
 		{
 			_currentPath = null;
 			Velocity = Vector2.Zero;
-			// Consider emitting signal for chat log update
+			// Potentially emit signal: PathCancelledByDrag
 		}
 		_isBeingDragged = true;
-		_originalDragPosition = GlobalPosition;
+		_originalDragGlobalPosition = GlobalPosition; // Store current global position
+		// SetProcessInput(true); // If input is usually off, enable for drag
 	}
 
 	public void UpdateDragPosition(Vector2 newGlobalPosition)
 	{
-		if (_isBeingDragged) GlobalPosition = newGlobalPosition;
+		if (_isBeingDragged) GlobalPosition = newGlobalPosition; // Directly set GlobalPosition during drag
 	}
 
-	public bool EndDrag() // Returns true if position is valid, false if reverted
+	// Called when drag operation finishes. Server might call this after tentatively setting position.
+	// Client might call this before sending request if it wants to do a pre-check (though server is authoritative).
+	public bool PerformCollisionCheckAndRevertIfFailed()
 	{
-		if (!_isBeingDragged) return true; // Not dragging, so position is considered valid by this call
-		_isBeingDragged = false;
+		// This method assumes GlobalPosition has been set to the desired new position.
+		// It checks if this new position is valid.
+		// CharacterBody2D.TestMove() is good for this.
+		// It requires a MotionParameters object.
+		// For simplicity, if we are checking current position after a direct move (not physics step),
+		// we can try a zero-length MoveAndSlide and see if it collides immediately,
+		// or use PhysicsDirectSpaceState2D.
 
-		var collision = MoveAndCollide(Vector2.Zero, testOnly: true);
-		if (collision != null)
+		// Using TestMove for a more direct check without actually moving (if it were a future move)
+		// However, since GlobalPosition is already set, we check for overlaps.
+		// A common way is to enable contact monitoring and check for bodies_colliding.
+		// Or, simpler for this case: try a tiny movement and see if it collides.
+		// If it does, the current spot is bad (already overlapping).
+
+		var spaceState = GetWorld2D().DirectSpaceState;
+		var parameters = new PhysicsShapeQueryParameters2D
 		{
-			GlobalPosition = _originalDragPosition;
-			// Consider emitting signal for chat log update
-			GD.Print($"Token {Sheet?.Name ?? Name}: Cannot place token. Collision. Reverted.");
-			return false;
+			Shape = _collisionShape.Shape, // Use the token's actual collision shape
+			Transform = GlobalTransform,
+			CollisionMask = this.CollisionMask, // Check against what this token is set to collide with (e.g., walls)
+			Exclude = new Godot.Collections.Array<Rid>(new[] { GetRid() }) // Exclude self
+		};
+
+		var intersectingShapes = spaceState.IntersectShape(parameters);
+		if (intersectingShapes.Count > 0)
+		{
+			// Check if any of the intersections are with something that should block
+			// For now, any intersection is considered a block.
+			GlobalPosition = _originalDragGlobalPosition; // Revert to position before drag started
+			// Need to call MoveAndSlide after changing GlobalPosition directly if physics engine needs to be aware
+			Velocity = Vector2.Zero; MoveAndSlide();
+			GD.Print($"Token {Sheet?.Name ?? Name}: Placement collision at {GlobalPosition}, reverted to {_originalDragGlobalPosition}. Intersecting shapes: {intersectingShapes.Count}");
+			return false; // Collision detected
 		}
-		return true;
+
+		// If no collision, ensure velocity is zeroed out from any prior movement.
+		Velocity = Vector2.Zero;
+		MoveAndSlide(); // Ensure physics state is updated with current GlobalPosition and zero velocity.
+		return true; // Position is valid
 	}
+
+	public void EndDragCleanup() // Called after server confirms position or client reverts.
+	{
+		_isBeingDragged = false;
+		// SetProcessInput(false); // If input was enabled for drag
+	}
+
+
+	public Vector2 GetOriginalDragPosition() => _originalDragGlobalPosition;
 
 
 	public void SetSelectionVisual(bool selected)

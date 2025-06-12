@@ -15,12 +15,14 @@ public partial class CombatTracker : PanelContainer
 
 	private ChatLog _chatLog;
 	private SoundManager _soundManager;
+	private NetworkManager _networkManager; // Added NetworkManager reference
 	private string _gameUnitName = "ft";
 
-	public void Initialize(ChatLog chatLog, SoundManager soundManager, string gameUnitName = "ft")
+	public void Initialize(ChatLog chatLog, SoundManager soundManager, NetworkManager networkManager, string gameUnitName = "ft")
 	{
 		_chatLog = chatLog;
 		_soundManager = soundManager;
+		_networkManager = networkManager; // Store reference
 		_gameUnitName = gameUnitName;
 	}
 
@@ -40,7 +42,7 @@ public partial class CombatTracker : PanelContainer
 	public void AddCombatantEntry(Combatant combatant)
 	{
 		if (combatant == null) return;
-		if (combatant.LinkedToken != null && _combatants.Any(c => c.LinkedToken == combatant.LinkedToken)) {
+		if (combatant.LinkedToken != null && _combatants.Any(c => c.LinkedToken == combatant.LinkedToken && c.LinkedToken != null)) { // Ensure linkedtoken is not null before comparing
 			_chatLog?.AddMessage($"Combat Tracker: {combatant.DisplayText} is already in combat.", Colors.Orange);
 			return;
 		}
@@ -48,24 +50,55 @@ public partial class CombatTracker : PanelContainer
 		_chatLog?.AddMessage($"Combat Tracker: {combatant.DisplayText} (Init: {combatant.Initiative}) added.", Colors.CornflowerBlue);
 		if (_combatStarted) SortCombatants();
 		UpdateDisplay();
+		BroadcastFullStateIfServer();
 	}
 
 	public void RemoveCombatant(Combatant combatant)
 	{
-		if (combatant == null || !_combatants.Contains(combatant)) return;
-		_combatants.Remove(combatant);
-		_chatLog?.AddMessage($"Combat Tracker: {combatant.DisplayText} removed.", Colors.Orange);
-		if (_combatStarted && _combatants.Count == 0) ResetCombat();
-		else if (_combatStarted)
-		{
-			if (_currentTurnIndex >= _combatants.Count) {
-				_currentTurnIndex = _combatants.Count > 0 ? 0 : -1;
+		if (combatant == null) return;
+
+		// Find combatant to remove, potentially by reference or a unique ID if available
+		// For now, assuming reference or that List.Remove works as intended with passed combatant object
+		bool removed = _combatants.Remove(combatant);
+		if(!removed) {
+			// If reference didn't work, try by name if names are somewhat unique for non-token combatants
+			// or by linked token if it exists. This is a fallback.
+			if (combatant.LinkedToken != null) {
+				removed = _combatants.RemoveAll(c => c.LinkedToken == combatant.LinkedToken) > 0;
+			} else if (!string.IsNullOrEmpty(combatant.Name)) {
+				removed = _combatants.RemoveAll(c => c.Name == combatant.Name && c.LinkedToken == null) > 0; // Only remove if also non-token
 			}
 		}
+
+		if (!removed) {
+			GD.Print($"CombatTracker: Attempted to remove combatant not found in list: {combatant.DisplayText}");
+			return;
+		}
+
+		_chatLog?.AddMessage($"Combat Tracker: {combatant.DisplayText} removed.", Colors.Orange);
+
+		if (_combatStarted && _combatants.Count == 0)
+		{
+			ResetCombat(); // This will call UpdateDisplay and Broadcast
+			return;
+		}
+		else if (_combatStarted)
+		{
+			// Adjust current turn index if necessary
+			if (_currentTurnIndex >= _combatants.Count) { // If last one was removed
+				_currentTurnIndex = _combatants.Count > 0 ? 0 : -1;
+			} else if (_currentTurnIndex == -1 && _combatants.Count > 0) { // If list was emptied and refilled somehow before this, but shouldn't happen with current logic
+                 _currentTurnIndex = 0;
+            }
+            // If the removed combatant was before the current turn, the index might need adjustment,
+            // but simple removal from list handles this for subsequent NextTurn calls.
+            // The main issue is if _currentTurnIndex becomes invalid.
+		}
 		UpdateDisplay();
+		BroadcastFullStateIfServer();
 	}
 
-	private void SortCombatants()
+	private void SortCombatants() // Internal method, broadcast will happen from calling public method
 	{
 		_combatants = _combatants.OrderByDescending(c => c.Initiative)
 								 .ThenByDescending(c => c.LinkedToken?.Sheet?.Speed ?? 0)
@@ -84,12 +117,13 @@ public partial class CombatTracker : PanelContainer
 		SortCombatants();
 		_currentTurnIndex = 0;
 		_chatLog?.AddMessage($"--- Combat Started! Round {_roundNumber} ---", Colors.Crimson);
-		if (_combatants.Count > 0 && _combatants[_currentTurnIndex].LinkedToken != null)
+		if (_combatants.Count > 0 && _currentTurnIndex < _combatants.Count && _combatants[_currentTurnIndex].LinkedToken != null)
 		{
 			_combatants[_currentTurnIndex].LinkedToken.ResetTurnMovementStats();
 		}
-		LogCurrentTurn();
+		LogCurrentTurn(); // This logs to chat
 		UpdateDisplay();
+		BroadcastFullStateIfServer();
 	}
 
 	public void NextTurn()
@@ -107,12 +141,14 @@ public partial class CombatTracker : PanelContainer
 			_roundNumber++;
 			_chatLog?.AddMessage($"--- Round {_roundNumber} ---", Colors.Crimson);
 		}
-		if (_combatants.Count > 0 && _combatants[_currentTurnIndex].LinkedToken != null)
+
+		if (_combatants.Count > 0 && _currentTurnIndex < _combatants.Count && _combatants[_currentTurnIndex].LinkedToken != null)
 		{
 			_combatants[_currentTurnIndex].LinkedToken.ResetTurnMovementStats();
 		}
-		LogCurrentTurn();
+		LogCurrentTurn(); // This logs to chat
 		UpdateDisplay();
+		BroadcastFullStateIfServer();
 	}
 
 	private void LogCurrentTurn()
@@ -141,7 +177,7 @@ public partial class CombatTracker : PanelContainer
 		foreach (var combatant in _combatants)
 		{
 			data.Combatants.Add(new CombatantData {
-				Name = combatant.Name, // Or DisplayText
+				Name = combatant.Name,
 				Initiative = combatant.Initiative,
 				LinkedTokenNodeName = combatant.LinkedToken?.Name.ToString() ?? string.Empty
 			});
@@ -151,13 +187,11 @@ public partial class CombatTracker : PanelContainer
 
 	public void ApplyCombatTrackerData(CombatTrackerData data, Godot.Collections.Array<Token> allSceneTokens)
 	{
-		// Don't call ResetCombat() here as it logs and might clear things unnecessarily before load.
-		// Instead, directly reset internal state.
+		// Directly reset internal state without invoking ResetCombat's logging/broadcast
 		_combatants.Clear();
 		_currentTurnIndex = -1;
 		_roundNumber = 0;
 		_combatStarted = false;
-		// UpdateDisplay(); // Update to clear visuals immediately
 
 		if (data == null) {
 			UpdateDisplay(); // Ensure UI is cleared if data is null
@@ -169,9 +203,9 @@ public partial class CombatTracker : PanelContainer
 			Token linkedToken = null;
 			if (!string.IsNullOrEmpty(cData.LinkedTokenNodeName))
 			{
-				foreach(var t in allSceneTokens)
+				foreach(var tVariant in allSceneTokens) // allSceneTokens is Godot.Collections.Array
 				{
-					if (t.Name == cData.LinkedTokenNodeName)
+					if (tVariant.AsGodotObject() is Token t && t.Name == cData.LinkedTokenNodeName)
 					{
 						linkedToken = t;
 						break;
@@ -193,18 +227,19 @@ public partial class CombatTracker : PanelContainer
 			{
 				_currentTurnIndex = (_combatants.Count > 0) ? 0 : -1;
 			}
-			if (_currentTurnIndex != -1 && _combatants.Count > 0)
+			// Reset movement stats for the token whose turn it is, if combat is active and a valid turn index.
+			if (_currentTurnIndex != -1 && _combatants.Count > 0 && _currentTurnIndex < _combatants.Count && _combatants[_currentTurnIndex].LinkedToken != null)
 			{
-				_combatants[_currentTurnIndex].LinkedToken?.ResetTurnMovementStats();
+				_combatants[_currentTurnIndex].LinkedToken.ResetTurnMovementStats();
 			}
 		}
 
 		UpdateDisplay();
-		if (_combatStarted && _currentTurnIndex != -1 && _combatants.Count > 0)
+		if (_combatStarted && _currentTurnIndex != -1 && _combatants.Count > 0 && _currentTurnIndex < _combatants.Count)
 		{
 			LogCurrentTurn();
 		}
-		_chatLog?.AddMessage("Combat state restored.", Colors.CornflowerBlue);
+		_chatLog?.AddMessage("Combat state restored from server.", Colors.CornflowerBlue);
 	}
 
 	public void ResetCombat()
@@ -215,6 +250,17 @@ public partial class CombatTracker : PanelContainer
 		_combatStarted = false;
 		_chatLog?.AddMessage("--- Combat Reset ---", Colors.MediumPurple);
 		UpdateDisplay();
+		BroadcastFullStateIfServer();
+	}
+
+	private void BroadcastFullStateIfServer()
+	{
+		if (_networkManager != null && _networkManager.IsServer())
+		{
+			CombatTrackerData currentData = GetCombatTrackerData();
+			string jsonData = Json.Stringify(currentData.ToDictionary());
+			_networkManager.Rpc(nameof(NetworkManager.RpcClientReceiveFullCombatState), jsonData);
+		}
 	}
 
 	private void UpdateDisplay()

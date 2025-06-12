@@ -1,11 +1,13 @@
 using Godot;
 using System;
+using System.Collections.Generic; // For List
+using System.Linq; // For Select
 
 public partial class MainScene : Node2D
 {
 	[Export] private ChatLog chatLogNode;
 	[Export] private LineEdit chatMessageInput;
-	[Export] private CombatTracker combatTracker; // Panel itself is the tracker
+	[Export] private CombatTracker combatTracker;
 	[Export] private Button addTokenButton;
 	[Export] private Button nextTurnButton;
 	[Export] private Button startCombatButton;
@@ -15,7 +17,7 @@ public partial class MainScene : Node2D
 	[Export] private Sprite2D mapBackgroundSprite;
 	[Export] private Button loadMapButton;
 	[Export] private FileDialog mapFileDialog;
-	[Export] private DrawingOverlay drawingOverlay; // Changed type to DrawingOverlay
+	[Export] private DrawingOverlay drawingOverlay;
 	[Export] private Button toggleDrawModeButton;
 	[Export] private Button clearDrawingsButton;
 	[Export] private Button toggleMeasureModeButton;
@@ -35,128 +37,120 @@ public partial class MainScene : Node2D
 	[Export] private FileDialog campaignFileDialog;
 	[Export] private Button saveCampaignButton;
 	[Export] private Button loadCampaignButton;
+	[Export] private NetworkManager networkManagerNode;
+	[Export] private LineEdit serverIpInput;
+	[Export] private LineEdit portInput;
+	[Export] private Button hostButton;
+	[Export] private Button joinButton;
+	[Export] private Button disconnectButton;
+	[Export] private Label networkStatusLabel;
+	[Export] private ItemList playerListDisplay;
+	[Export] private Button spawnTestNetworkTokenButton;
 
 	private Token _selectedToken = null;
+	private Token _locallyDraggedToken = null;
 	private PackedScene _tokenScene;
 	private bool _isMusicPlaying = false;
-	private SoundManager _soundManager; // Instance for easy access
+	private SoundManager _soundManager;
 	private const string NotesFilePath = "user://user_notes.cfg";
+	private const string CampaignFileExtension = ".vttcamp";
 	private bool _isMeasureModeActive = false;
 	private Vector2 _measurementStartPoint = Vector2.Zero;
 	private Vector2 _measurementEndPoint = Vector2.Zero;
-	private bool _isMeasuring = false; // True when mouse button is down during measurement
+	private bool _isMeasuring = false;
 
-	// Conversion factors
-	[Export] private float pixelsPerUnit = 50.0f; // Renamed from PixelsPerGridUnit, used for measurement and vision
-	private const float GameUnitsPerGridSquare = 5.0f; // e.g., 5 feet per grid square, used for measurement display
-	private const string GameUnitName = "ft"; // Used for measurement display
+	[Export] private float pixelsPerUnit = 50.0f;
+	private const float GameUnitsPerGridSquare = 5.0f;
+	private const string GameUnitName = "ft";
 
 	private AcceptDialog _initiativeDialog;
 	private LineEdit _initiativeLineEdit;
 
+	private bool _isTokenCurrentlyBeingDragged = false;
+	private bool _dragWasActuallyMovement = false;
 
-	// Called when the node enters the scene tree for the first time.
+	public ChatLog ChatLogNode => chatLogNode;
+    public Sprite2D MapBackgroundSprite => mapBackgroundSprite;
+    public CombatTracker CombatTracker => combatTracker;
+    public DrawingOverlay DrawingOverlay => drawingOverlay;
+
+
 	public override void _Ready()
 	{
-		// NodePath assignments from .tscn
 		if (chatLogNode == null) GD.PrintErr("ChatLog node not found.");
-		if (chatMessageInput == null) GD.PrintErr("ChatMessageInput node not found.");
-
-		_soundManager = GetNodeOrNull<SoundManager>("/root/SoundManager"); // Ensure SoundManager is fetched before initializing others
+		_soundManager = GetNodeOrNull<SoundManager>("/root/SoundManager");
 		if (_soundManager == null) GD.PrintErr("SoundManager Autoload not found!");
 
+		if (networkManagerNode == null) GD.PrintErr("NetworkManagerNode not found!");
+
 		if (combatTracker == null) GD.PrintErr("CombatTracker node not found.");
-		else combatTracker.Initialize(chatLogNode, _soundManager, GameUnitName); // Pass ChatLog, SoundManager & GameUnitName
+		else combatTracker.Initialize(chatLogNode, _soundManager, networkManagerNode, GameUnitName);
 
-		if (addTokenButton == null) GD.PrintErr("AddTokenButton not found.");
-		else addTokenButton.Pressed += OnAddSelectedTokenPressed;
+		if (addTokenButton != null) addTokenButton.Pressed += OnAddSelectedTokenPressed;
+		if (nextTurnButton != null) nextTurnButton.Pressed += () => combatTracker?.NextTurn();
+		if (startCombatButton != null) startCombatButton.Pressed += () => combatTracker?.StartCombat();
+		if (resetCombatButton != null) resetCombatButton.Pressed += () => combatTracker?.ResetCombat();
+		if (changeTokenImageButton != null) changeTokenImageButton.Pressed += OnChangeTokenImageButtonPressed;
+		if (tokenImageFileDialog != null) tokenImageFileDialog.FileSelected += OnTokenImageFileSelected;
+		if (loadMapButton != null) loadMapButton.Pressed += OnLoadMapButtonPressed;
+		if (mapFileDialog != null) mapFileDialog.FileSelected += OnMapFileSelected;
+		if (toggleDrawModeButton != null) toggleDrawModeButton.Pressed += OnToggleDrawModeButtonPressed;
+		if (clearDrawingsButton != null) clearDrawingsButton.Pressed += () => drawingOverlay?.ClearDrawings();
+		if (toggleMeasureModeButton != null) toggleMeasureModeButton.Pressed += OnToggleMeasureModeButtonPressed;
+		if (shareHandoutButton != null) shareHandoutButton.Pressed += OnShareHandoutButtonPressed;
+		if (handoutImageFileDialog != null) handoutImageFileDialog.FileSelected += OnHandoutImageFileSelected;
+		if (toggleNotesButton != null) toggleNotesButton.Pressed += OnToggleNotesButtonPressed;
+		if (notesTextEdit != null) notesTextEdit.TextChanged += OnNotesTextChanged;
+		if (decksPanel != null) decksPanel.Initialize(chatLogNode);
+		if (toggleDecksPanelButton != null) toggleDecksPanelButton.Pressed += OnToggleDecksPanelButtonPressed;
+		if (toggleMusicButton != null) toggleMusicButton.Pressed += OnToggleMusicButtonPressed;
+		if (toggleMacroPanelButton != null) toggleMacroPanelButton.Pressed += OnToggleMacroPanelButtonPressed;
+		if (runMacroButton != null) runMacroButton.Pressed += OnRunMacroButtonPressed;
+		if (campaignFileDialog != null) campaignFileDialog.FileSelected += OnCampaignFileSelected;
+		if (saveCampaignButton != null) saveCampaignButton.Pressed += OnSaveCampaignButtonPressed;
+		if (loadCampaignButton != null) loadCampaignButton.Pressed += OnLoadCampaignButtonPressed;
+		if (spawnTestNetworkTokenButton != null) spawnTestNetworkTokenButton.Pressed += OnSpawnTestNetworkTokenButtonPressed;
 
-		if (nextTurnButton == null) GD.PrintErr("NextTurnButton not found.");
-		else nextTurnButton.Pressed += () => combatTracker?.NextTurn();
+		if (networkManagerNode != null)
+		{
+			networkManagerNode.ServerCreated += OnNetworkServerCreated;
+			networkManagerNode.ServerCreationFailed += OnNetworkServerCreationFailed;
+			networkManagerNode.ConnectionSucceeded += OnNetworkConnectionSucceeded;
+			networkManagerNode.ConnectionFailed += OnNetworkConnectionFailed;
+			networkManagerNode.PeerConnected += OnNetworkPeerConnected;
+			networkManagerNode.PeerDisconnected += OnNetworkPeerDisconnected;
+			networkManagerNode.ServerDisconnected += OnNetworkServerDisconnected;
+			networkManagerNode.PlayerListUpdated += OnNetworkPlayerListUpdated;
+			networkManagerNode.ChatMessageReceived += OnNetworkChatMessageReceived;
+			networkManagerNode.NetworkSpawnTokenRequested += OnNetworkSpawnTokenRequested;
+			networkManagerNode.NetworkTokenPositionUpdated += OnNetworkTokenPositionUpdated_Client;
+			networkManagerNode.NetworkTokenPathExecutionRequested += OnNetworkTokenPathExecutionRequested_Client;
+			networkManagerNode.ServerDragRequestReceived += OnServerDragRequestReceived_Server;
+			networkManagerNode.ServerPathRequestReceived += OnServerPathRequestReceived_Server;
+			networkManagerNode.ServerDiceRollRequested += OnServerDiceRollRequested_Server;
+			networkManagerNode.NetworkDiceRollResultReceived += OnNetworkDiceRollResult_ClientServer;
+			networkManagerNode.NetworkCombatStateReceived += OnNetworkCombatStateReceived_Client;
+			networkManagerNode.NetworkMapLoadRequested += OnNetworkMapLoadRequested_Client;
+			networkManagerNode.NetworkHandoutDisplayRequested += OnNetworkHandoutDisplayRequested_Client; // Connect handout signal
+		}
+		if (hostButton != null) hostButton.Pressed += OnHostButtonPressed;
+		if (joinButton != null) joinButton.Pressed += OnJoinButtonPressed;
+		if (disconnectButton != null) disconnectButton.Pressed += OnDisconnectButtonPressed;
 
-		if (startCombatButton == null) GD.PrintErr("StartCombatButton not found.");
-		else startCombatButton.Pressed += () => combatTracker?.StartCombat();
-
-		if (resetCombatButton == null) GD.PrintErr("ResetCombatButton not found.");
-		else resetCombatButton.Pressed += () => combatTracker?.ResetCombat();
-
-		if (changeTokenImageButton == null) GD.PrintErr("ChangeTokenImageButton not found.");
-		else changeTokenImageButton.Pressed += OnChangeTokenImageButtonPressed;
-
-		if (tokenImageFileDialog == null) GD.PrintErr("TokenImageFileDialog not found.");
-		else tokenImageFileDialog.FileSelected += OnTokenImageFileSelected;
-
+		if (chatMessageInput == null) GD.PrintErr("ChatMessageInput node not found.");
+		if (serverIpInput == null) GD.PrintErr("ServerIpInput not found!");
+		if (portInput == null) GD.PrintErr("PortInput not found!");
+		if (networkStatusLabel == null) GD.PrintErr("NetworkStatusLabel not found!");
+		if (playerListDisplay == null) GD.PrintErr("PlayerListDisplay not found!");
 		if (mapBackgroundSprite == null) GD.PrintErr("MapBackgroundSprite not found.");
-		if (loadMapButton == null) GD.PrintErr("LoadMapButton not found.");
-		else loadMapButton.Pressed += OnLoadMapButtonPressed;
-
-		if (mapFileDialog == null) GD.PrintErr("MapFileDialog not found.");
-		else mapFileDialog.FileSelected += OnMapFileSelected;
-
-		if (drawingOverlay == null)
-		{
-			GD.PrintErr("DrawingOverlay node not found.");
-		}
-		// else drawingOverlay.Initialize(); // If it had an Initialize method
-
-		if (toggleDrawModeButton == null) GD.PrintErr("ToggleDrawModeButton not found.");
-		else toggleDrawModeButton.Pressed += OnToggleDrawModeButtonPressed;
-
-		if (clearDrawingsButton == null) GD.PrintErr("ClearDrawingsButton not found.");
-		else clearDrawingsButton.Pressed += () => drawingOverlay?.ClearDrawings();
-
-		if (toggleMeasureModeButton == null) GD.PrintErr("ToggleMeasureModeButton not found.");
-		else toggleMeasureModeButton.Pressed += OnToggleMeasureModeButtonPressed;
-
-		if (shareHandoutButton == null) GD.PrintErr("ShareHandoutButton not found.");
-		else shareHandoutButton.Pressed += OnShareHandoutButtonPressed;
-
-		if (handoutImageFileDialog == null) GD.PrintErr("HandoutImageFileDialog not found.");
-		else handoutImageFileDialog.FileSelected += OnHandoutImageFileSelected;
-
-		if (notesPanel == null) GD.PrintErr("NotesPanel not found.");
-		if (toggleNotesButton == null) GD.PrintErr("ToggleNotesButton not found.");
-		else toggleNotesButton.Pressed += OnToggleNotesButtonPressed;
-
-		if (notesTextEdit == null) GD.PrintErr("NotesTextEdit not found.");
-		else notesTextEdit.TextChanged += OnNotesTextChanged;
-
-		if (decksPanel == null) GD.PrintErr("DecksPanel not found.");
-		else decksPanel.Initialize(chatLogNode);
-
-		if (toggleDecksPanelButton == null) GD.PrintErr("ToggleDecksPanelButton not found.");
-		else toggleDecksPanelButton.Pressed += OnToggleDecksPanelButtonPressed;
-
-		if (toggleMusicButton == null) GD.PrintErr("ToggleMusicButton not found.");
-		else toggleMusicButton.Pressed += OnToggleMusicButtonPressed;
-
-		if (macroPanel == null) GD.PrintErr("MacroPanel not found.");
-		if (toggleMacroPanelButton == null) GD.PrintErr("ToggleMacroPanelButton not found.");
-		else toggleMacroPanelButton.Pressed += OnToggleMacroPanelButtonPressed;
-
-		if (macroInputTextEdit == null) GD.PrintErr("MacroInputTextEdit not found.");
-		if (runMacroButton == null) GD.PrintErr("RunMacroButton not found.");
-		else runMacroButton.Pressed += OnRunMacroButtonPressed;
-
-		if (campaignFileDialog == null) GD.PrintErr("CampaignFileDialog not found!");
-		else campaignFileDialog.FileSelected += OnCampaignFileSelected;
-
-		if (saveCampaignButton == null) GD.PrintErr("SaveCampaignButton not found!");
-		else saveCampaignButton.Pressed += OnSaveCampaignButtonPressed;
-
-		if (loadCampaignButton == null) GD.PrintErr("LoadCampaignButton not found!");
-		else loadCampaignButton.Pressed += OnLoadCampaignButtonPressed;
-
-		if (chatMessageInput != null)
-		{
-			chatMessageInput.TextSubmitted += OnChatMessageSubmitted;
-		}
+        if (drawingOverlay == null) GD.PrintErr("DrawingOverlay node not found.");
+        if (notesPanel == null) GD.PrintErr("NotesPanel not found.");
+        if (macroPanel == null) GD.PrintErr("MacroPanel not found.");
 
 		chatLogNode?.AddMessage("System: Welcome to the VTT!", Colors.Aqua);
 		chatLogNode?.AddMessage("System: Place custom images in 'assets/tokens/' and 'assets/maps/'.", Colors.CornflowerBlue);
 		LoadNotes();
 
-		// _soundManager already fetched above
 		if (_soundManager != null)
 		{
 			_soundManager.PlayMusic("ambient_music.ogg.txt");
@@ -165,897 +159,153 @@ public partial class MainScene : Node2D
 		}
 
 		_tokenScene = GD.Load<PackedScene>("res://Token.tscn");
-		if (_tokenScene == null)
-		{
-			GD.PrintErr("Failed to load Token.tscn");
-			return;
-		}
-
-		SpawnToken(new Vector2(100, 100)); // These will also log to chat now via TestDiceRoller modifications
-		SpawnToken(new Vector2(300, 100));
-		SpawnToken(new Vector2(500, 100));
-
-		TestDiceRoller(); // This will now log to the chatLogNode
+		if (_tokenScene == null) GD.PrintErr("Failed to load Token.tscn");
 	}
 
 	private void OnChatMessageSubmitted(string text)
 	{
-		if (string.IsNullOrWhiteSpace(text))
-			return;
+		if (string.IsNullOrWhiteSpace(text)) { if (chatMessageInput != null) chatMessageInput.Clear(); return; }
+		string notation = "";
+		if (text.Trim().StartsWith("/roll ") || text.Trim().StartsWith("/r ")) notation = text.Trim().Substring(text.IndexOf(" ", StringComparison.Ordinal) + 1).Trim();
 
-		// Simple command handling for dice rolls
-		if (text.Trim().StartsWith("/roll ") || text.Trim().StartsWith("/r "))
+		if (!string.IsNullOrEmpty(notation))
 		{
-			string notation = text.Trim().Substring(text.IndexOf(" ", StringComparison.Ordinal) + 1);
-			DiceRollResult result = DiceRoller.Roll(notation);
-			LogDiceResult(result);
-		}
-		else
-		{
-			chatLogNode?.AddMessage($"Player: {text}", Colors.LightGray);
-		}
-
-		if (chatMessageInput != null)
-		{
-			chatMessageInput.Clear();
-		}
-	}
-
-	private void LogDiceResult(DiceRollResult result)
-	{
-		if (result.IsSuccess)
-		{
-			string rollMessage = $"Dice Roll ({result.Notation}): {result.Breakdown}";
-			chatLogNode?.AddMessage(rollMessage, Colors.LightGoldenrod, isCombatLog: true);
-			_soundManager?.PlaySfx("dice_roll.wav.txt");
-		}
-		else
-		{
-			string errorMessage = $"Dice Roll Error ({result.Notation}): {result.ErrorMessage}";
-			chatLogNode?.AddMessage(errorMessage, Colors.OrangeRed, isCombatLog: true);
-		}
-	}
-
-	private void TestDiceRoller()
-	{
-		// GD.Print("\n--- Testing DiceRoller ---"); // Console output can be removed or kept for debugging
-		chatLogNode?.AddMessage("--- Running DiceRoller Tests ---", Colors.MediumPurple);
-		string[] testNotations = {
-			"3d6", "1d20+5", "d8-1", "d6", "100", // Valid
-			"invalid_string", "2d6+", "d", "3d0", "0d6", // Invalid
-			"1d6+0", "2d4-0", "1d1000", "1001d6" // Edge cases
-		};
-
-		foreach (string notation in testNotations)
-		{
-			DiceRollResult result = DiceRoller.Roll(notation);
-			LogDiceResult(result); // Log to chat UI
-
-			// Keep console print for debugging if desired, or remove
-			// GD.Print($"Input: \"{notation}\"");
-			// GD.Print($"  Success: {result.IsSuccess}");
-			// if (result.IsSuccess)
-			// {
-			// 	GD.Print($"  Total: {result.Total}");
-			// 	GD.Print($"  Rolls: [{string.Join(", ", result.IndividualRolls)}]");
-			// 	GD.Print($"  Breakdown: {result.Breakdown}");
-			// }
-			// else
-			// {
-			// 	GD.Print($"  Error: {result.ErrorMessage}");
-			// }
-			// GD.Print("-----");
-		}
-		// GD.Print("--- End DiceRoller Test ---\n");
-		chatLogNode?.AddMessage("--- DiceRoller Tests Complete ---", Colors.MediumPurple);
-	}
-
-	private void SpawnToken(Vector2 position)
-	{
-		if (_tokenScene == null) return;
-
-		Node tokenInstanceNode = _tokenScene.Instantiate();
-		if (tokenInstanceNode is Token tokenInstance)
-		{
-			tokenInstance.Position = position;
-			tokenInstance.Name = $"Token_{GD.Randi() % 1000}"; // Give a unique name for selection differentiation if sheet name is same
-			// Load the default icon texture
-			tokenInstance.TokenTexture = GD.Load<Texture2D>("res://icon.svg");
-
-			// Connect Token's InputEvent to MainScene's handler
-			// Note: Token's own _InputEvent still fires for its internal logic (like dragging)
-			tokenInstance.InputEvent += (viewport, @event, shapeIdx) => OnTokenInputEvent(viewport, @event, shapeIdx, tokenInstance);
-			tokenInstance.InitializeVision(pixelsPerUnit);
-			tokenInstance.InitializeMovementLimits(pixelsPerUnit, GameUnitsPerGridSquare); // Use const GameUnitsPerGridSquare
-
-			// Create and assign CharacterSheet
-			CharacterSheet sheet = new CharacterSheet
+			if (networkManagerNode != null && networkManagerNode.IsNetworkActive())
 			{
-				Name = $"Token {GD.Randi() % 1000}", // Example: "Token 123"
-				MaxHealthPoints = (int)(GD.Randi() % 10) + 5, // Random HP between 5 and 14
-				CurrentHealthPoints = (int)(GD.Randi() % 10) + 5, // Random HP between 5 and 14
-				ArmorClass = (int)(GD.Randi() % 6) + 10, // Random AC between 10 and 15
-				Speed = 30
-			};
-			sheet.CurrentHealthPoints = sheet.MaxHealthPoints; // Start with full health
-			sheet.CustomProperties.Add("Faction", "Generic Monster");
-			sheet.CustomProperties.Add("Challenge Rating", (GD.Randi() % 3 + 1).ToString());
-
-
-			tokenInstance.Sheet = sheet;
-
-			// The Token script's _Ready method will apply this texture
-			AddChild(tokenInstance);
-			// GD.Print($"Spawned token '{sheet.Name}' at {position}. HP: {sheet.CurrentHealthPoints}/{sheet.MaxHealthPoints}, AC: {sheet.ArmorClass}");
-			// GD.Print($"    Custom Properties: Faction='{sheet.CustomProperties["Faction"]}', CR='{sheet.CustomProperties["Challenge Rating"]}'");
-			chatLogNode?.AddMessage($"Spawned token '{sheet.Name}' (HP: {sheet.CurrentHealthPoints}/{sheet.MaxHealthPoints}, AC: {sheet.ArmorClass}) at {position}.", Colors.DarkTurquoise);
-
-		}
-		else
-		{
-			GD.PrintErr("Failed to instantiate Token scene or instance is not of type Token.");
-			if (tokenInstanceNode != null)
+				if (networkManagerNode.IsServer()) { long id = Multiplayer.GetUniqueId(); string name = networkManagerNode.GetPlayerList().FirstOrDefault(p=>p.Id==id)?.Name??"Host"; DiceRollResult res=DiceRoller.Roll(notation); DiceRollResultData data=DiceRollResultData.FromDiceRollResult(res); networkManagerNode.Rpc(nameof(NetworkManager.RpcClientDisplayDiceRollResult),id,name,Json.Stringify(data.ToDictionary()));}
+				else networkManagerNode.RpcId(1, nameof(NetworkManager.RpcServerDoDiceRoll), notation);
+			} else { DiceRollResult res=DiceRoller.Roll(notation); DiceRollResultData data=DiceRollResultData.FromDiceRollResult(res); OnNetworkDiceRollResult_ClientServer(Multiplayer.GetUniqueId(),"Player (Offline)",Json.Stringify(data.ToDictionary()));}
+		} else {
+			if (networkManagerNode != null && networkManagerNode.IsNetworkActive())
 			{
-				tokenInstanceNode.QueueFree(); // Clean up if instantiation happened but type was wrong
-			}
+				if (networkManagerNode.IsServer()) { long id=Multiplayer.GetUniqueId(); string name=networkManagerNode.GetPlayerList().FirstOrDefault(p=>p.Id==id)?.Name??"Host"; networkManagerNode.Rpc(nameof(NetworkManager.RpcClientReceiveChatMessage),id,name,text);}
+				else networkManagerNode.RpcId(1, nameof(NetworkManager.RpcServerRelayChatMessage), text);
+			} else chatLogNode?.AddMessage($"Player (Offline): {text}", Colors.LightGray);
 		}
+		if (chatMessageInput != null) chatMessageInput.Clear();
 	}
 
-	private bool _isTokenCurrentlyBeingDragged = false; // MainScene's flag for active drag operation
-	private bool _dragWasActuallyMovement = false; // Flag to check if mouse moved significantly during drag
+	private void LogDiceResult(DiceRollResult result) { if (result.IsSuccess) { chatLogNode?.AddMessage($"Dice Roll ({result.Notation}): {result.Breakdown}", Colors.LightGoldenrod, true); _soundManager?.PlaySfx("dice_roll.wav.txt"); } else { chatLogNode?.AddMessage($"Dice Roll Error ({result.Notation}): {result.ErrorMessage}", Colors.OrangeRed, true);}}
+	private void TestDiceRoller() { }
+	public Token SpawnToken(Vector2 position) { if (_tokenScene == null) { GD.PrintErr("Token scene not loaded!"); return null; } Node n = _tokenScene.Instantiate(); if (n is Token t) { t.Position = position; t.Name = $"Token_{GD.Randi() % 10000}"; t.InitializeVision(pixelsPerUnit); t.InitializeMovementLimits(pixelsPerUnit, GameUnitsPerGridSquare); t.Sheet = new CharacterSheet { Name = $"Creature {GD.Randi() % 1000}" }; AddChild(t); t.InputEvent += (vp, ev, shapeIdx) => OnTokenInputEvent(vp, ev, shapeIdx, t); return t; } GD.PrintErr("Failed to instantiate Token."); n?.QueueFree(); return null; }
+	public Token SpawnTokenAndApplyData(TokenData tokenData) { if (_tokenScene == null) { GD.PrintErr("Token scene not loaded!"); return null; } Node n = _tokenScene.Instantiate(); if (n is Token t) { t.Name = tokenData.NodeName ?? $"Token_{GD.Randi() % 10000}"; AddChild(t); t.InputEvent += (vp, ev, shapeIdx) => OnTokenInputEvent(vp, ev, shapeIdx, t); t.InitializeVision(pixelsPerUnit); t.InitializeMovementLimits(pixelsPerUnit, GameUnitsPerGridSquare); t.ApplyTokenData(tokenData); chatLogNode?.AddMessage($"Loaded/Spawned token '{t.Sheet?.Name ?? t.Name}' at {t.GlobalPosition}.", Colors.LightBlue); return t; } GD.PrintErr("Failed to instantiate Token from TokenData."); n?.QueueFree(); return null; }
 
 	private void OnTokenInputEvent(Node viewport, InputEvent @event, int shapeIdx, Token tokenInstance)
 	{
 		if (tokenInstance == null) return;
-
 		if (@event is InputEventMouseButton mouseButtonEvent && mouseButtonEvent.ButtonIndex == MouseButton.Left)
 		{
 			if (mouseButtonEvent.Pressed)
 			{
-				_isTokenCurrentlyBeingDragged = true;
-				_dragWasActuallyMovement = false; // Reset this on new press
-				tokenInstance.StartDrag(); // Notify token it's being dragged
-
-				// Selection logic: select on press, unless it's already selected (then it's a drag)
-				if (_selectedToken != tokenInstance)
-				{
-					if (_selectedToken != null) _selectedToken.SetSelectionVisual(false);
-					_selectedToken = tokenInstance;
-					_selectedToken.SetSelectionVisual(true);
-					chatLogNode?.AddMessage($"Token '{_selectedToken.Sheet?.Name ?? _selectedToken.Name}' selected.", Colors.Cyan);
-				}
-				// Consume event so _UnhandledInput doesn't immediately try to pathfind if it was a right-click (though this is left click)
+				_isTokenCurrentlyBeingDragged = true; _dragWasActuallyMovement = false;
+				_locallyDraggedToken = tokenInstance; _locallyDraggedToken.StartDrag();
+				if (_selectedToken != tokenInstance) { if (_selectedToken != null) _selectedToken.SetSelectionVisual(false); _selectedToken = tokenInstance; _selectedToken.SetSelectionVisual(true); chatLogNode?.AddMessage($"Selected: '{_selectedToken.Sheet?.Name ?? _selectedToken.Name}'.", Colors.Cyan); }
 				GetViewport().SetInputAsHandled();
-			}
-			else // Mouse button released
-			{
-				if (_isTokenCurrentlyBeingDragged && _selectedToken == tokenInstance) // Ensure we're releasing the token we think we're dragging
+			} else {
+				if (_isTokenCurrentlyBeingDragged && _locallyDraggedToken == tokenInstance)
 				{
-					bool dragValid = _selectedToken.EndDrag(); // Token handles collision check and revert if needed
-					if (!dragValid)
+					Vector2 finalVisualPos = _locallyDraggedToken.GlobalPosition;
+					if (networkManagerNode != null && networkManagerNode.IsNetworkActive())
 					{
-						chatLogNode?.AddMessage($"Token '{_selectedToken.Sheet?.Name ?? _selectedToken.Name}' placement failed, reverted.", Colors.Orange);
-					}
-
-					// If it was just a click (no significant mouse movement during drag), and it's the selected token.
-					// The selection already happened on press.
-					// If _dragWasActuallyMovement is false, it was a click on an already selected token.
-					// No specific action needed here for selection on "click on already selected".
+						if (networkManagerNode.IsServer()) { _locallyDraggedToken.UpdateDragPosition(finalVisualPos); bool isValid = _locallyDraggedToken.PerformCollisionCheckAndRevertIfFailed(); _locallyDraggedToken.EndDragCleanup(); networkManagerNode.Rpc(nameof(NetworkManager.RpcClientUpdateTokenPosition), _locallyDraggedToken.Name.ToString(), _locallyDraggedToken.GlobalPosition); if (!isValid) chatLogNode?.AddMessage($"Server: Token '{_locallyDraggedToken.Name}' move invalid, reverted.", Colors.Orange); }
+						else { _locallyDraggedToken.GlobalPosition = _locallyDraggedToken.GetOriginalDragPosition(); _locallyDraggedToken.EndDragCleanup(); networkManagerNode.RpcId(1, nameof(NetworkManager.RpcServerRequestTokenDragMove), _locallyDraggedToken.Name.ToString(), finalVisualPos); }
+					} else { _locallyDraggedToken.UpdateDragPosition(finalVisualPos); _locallyDraggedToken.PerformCollisionCheckAndRevertIfFailed(); _locallyDraggedToken.EndDragCleanup(); }
 				}
-				_isTokenCurrentlyBeingDragged = false;
-				_dragWasActuallyMovement = false; // Reset
-				GetViewport().SetInputAsHandled();
+				_isTokenCurrentlyBeingDragged = false; _dragWasActuallyMovement = false; _locallyDraggedToken = null; GetViewport().SetInputAsHandled();
 			}
 		}
-
-	private void OnShareHandoutButtonPressed()
-	{
-		if (handoutDisplayScene == null)
-		{
-			chatLogNode?.AddMessage("Error: HandoutDisplay scene not set in MainScene.", Colors.Red);
-			GD.PrintErr("HandoutDisplay scene not linked in MainScene inspector.");
-			return;
-		}
-		if (handoutImageFileDialog == null)
-		{
-			GD.PrintErr("HandoutImageFileDialog is null.");
-			return;
-		}
-		handoutImageFileDialog.CurrentPath = "res://assets/handouts/";
-		handoutImageFileDialog.PopupCentered();
 	}
 
-	private void OnHandoutImageFileSelected(string path)
-	{
-		if (handoutDisplayScene == null)
-		{
-			GD.PrintErr("HandoutDisplay scene not linked, cannot show handout.");
-			return;
-		}
-
-		var imageTexture = ResourceLoader.Load<Texture2D>(path);
-		if (imageTexture == null)
-		{
-			chatLogNode?.AddMessage($"Error: Failed to load handout image from '{path}'.", Colors.OrangeRed);
-			return;
-		}
-
-		Node handoutNode = handoutDisplayScene.Instantiate();
-		if (handoutNode is HandoutDisplay handoutInstance)
-		{
-			AddChild(handoutInstance); // Add to scene so it can be seen and interact
-			handoutInstance.DisplayHandout(imageTexture);
-			chatLogNode?.AddMessage($"GM shared handout: {path.GetFile()}", Colors.MediumPurple);
-		}
-		else
-		{
-			GD.PrintErr("Failed to instance HandoutDisplay or instanced node is not of HandoutDisplay type.");
-			handoutNode?.QueueFree(); // Clean up if wrong type
-		}
-	}
-
-	private void LoadNotes()
-	{
-		if (notesTextEdit == null) return;
-		ConfigFile cfg = new ConfigFile();
-		Error err = cfg.Load(NotesFilePath);
-		if (err == Error.Ok)
-		{
-			notesTextEdit.Text = cfg.GetValue("Notes", "Content", "").ToString();
-		}
-		else if (err != Error.FileNotFound) // Don't log error if file simply doesn't exist yet
-		{
-			GD.PrintErr($"Error loading notes: {err}");
-			chatLogNode?.AddMessage($"Error loading notes: {err}", Colors.Red);
-		}
-	}
-
-	private void OnToggleNotesButtonPressed()
-	{
-		if (notesPanel == null) return;
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		notesPanel.Visible = !notesPanel.Visible;
-		if (notesPanel.Visible)
-		{
-			notesTextEdit?.GrabFocus();
-			chatLogNode?.AddMessage("Notes panel shown.", Colors.DarkGray);
-		}
-		else
-		{
-			chatLogNode?.AddMessage("Notes panel hidden.", Colors.DarkGray);
-		}
-	}
-
-	private void OnNotesTextChanged()
-	{
-		if (notesTextEdit == null) return;
-		ConfigFile cfg = new ConfigFile();
-		cfg.SetValue("Notes", "Content", notesTextEdit.Text);
-		Error err = cfg.Save(NotesFilePath);
-		if (err != Error.Ok)
-		{
-			GD.PrintErr($"Error saving notes: {err}");
-			chatLogNode?.AddMessage($"Error saving notes: {err}", Colors.Red);
-		}
-	}
-
-	private void OnToggleDecksPanelButtonPressed()
-	{
-		if (decksPanel == null) return;
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		decksPanel.Visible = !decksPanel.Visible;
-		if (decksPanel.Visible)
-		{
-			chatLogNode?.AddMessage("Decks panel shown.", Colors.DarkSlateBlue);
-		}
-		else
-		{
-			chatLogNode?.AddMessage("Decks panel hidden.", Colors.DarkSlateBlue);
-		}
-	}
-
-	private void OnToggleMusicButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		if (_soundManager == null) return;
-		_isMusicPlaying = !_isMusicPlaying;
-		if (_isMusicPlaying) _soundManager.PlayMusic("ambient_music.ogg.txt");
-		else _soundManager.StopMusic();
-		UpdateMusicButtonText();
-	}
-
-	private void UpdateMusicButtonText()
-	{
-		if (toggleMusicButton != null)
-			toggleMusicButton.Text = _isMusicPlaying ? "Music: Stop" : "Music: Play";
-	}
-
-	private void OnToggleMacroPanelButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		if (macroPanel == null) return;
-		macroPanel.Visible = !macroPanel.Visible;
-		if (macroPanel.Visible)
-		{
-			macroInputTextEdit?.GrabFocus();
-			chatLogNode?.AddMessage("Macro panel shown.", Colors.DarkGoldenrod);
-		}
-		else
-		{
-			chatLogNode?.AddMessage("Macro panel hidden.", Colors.DarkGoldenrod);
-		}
-	}
-
-	private void OnRunMacroButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		if (macroInputTextEdit == null || chatLogNode == null)
-		{
-			GD.PrintErr("Macro input or ChatLog node is missing.");
-			return;
-		}
-
-		string script = macroInputTextEdit.Text;
-		if (string.IsNullOrWhiteSpace(script))
-		{
-			chatLogNode.AddMessage("[MACRO] Script is empty.", Colors.OrangeRed);
-			return;
-		}
-
-		MacroContext context = new MacroContext {
-			Chat = this.chatLogNode,
-			SelectedToken = this._selectedToken, // Can be null
-			Combat = this.combatTracker,       // Can be null if not used in a context where CombatTracker is ready
-			MainSceneInstance = this
-			// DiceRoller is static, so no instance in context needed
-		};
-
-		chatLogNode.AddMessage($"[MACRO] Executing script...", Colors.DarkGoldenrod);
-		MacroEngine.ExecuteMacro(script, context);
-		chatLogNode.AddMessage($"[MACRO] Execution finished.", Colors.DarkGoldenrod);
-	}
-
-	private void OnSaveCampaignButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		if (campaignFileDialog == null) { GD.PrintErr("CampaignFileDialog is null!"); return; }
-		campaignFileDialog.FileMode = FileDialog.FileModeEnum.SaveFile;
-		campaignFileDialog.ClearFilters();
-		campaignFileDialog.AddFilter($"*{CampaignFileExtension} ; VTT Campaign File");
-		campaignFileDialog.CurrentPath = $"user://campaign_save{CampaignFileExtension}";
-		campaignFileDialog.PopupCentered();
-	}
-
-	private void OnLoadCampaignButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt");
-		if (campaignFileDialog == null) { GD.PrintErr("CampaignFileDialog is null!"); return; }
-		campaignFileDialog.FileMode = FileDialog.FileModeEnum.OpenFile;
-		campaignFileDialog.ClearFilters();
-		campaignFileDialog.AddFilter($"*{CampaignFileExtension} ; VTT Campaign File");
-		campaignFileDialog.CurrentPath = "user://";
-		campaignFileDialog.PopupCentered();
-	}
-
-	private void OnCampaignFileSelected(string path)
-	{
-		if (campaignFileDialog == null) return;
-
-		if (campaignFileDialog.FileMode == FileDialog.FileModeEnum.SaveFile)
-		{
-			if (!path.EndsWith(CampaignFileExtension))
-			{
-				path += CampaignFileExtension;
-			}
-			CampaignManager.SaveCampaign(path, this);
-		}
-		else
-		{
-			CampaignManager.LoadCampaign(path, this);
-		}
-	}
-
-	public override void _Process(double delta)
-	{
-		if (_isTokenCurrentlyBeingDragged && _selectedToken != null)
-		{
-			Vector2 currentMousePos = GetGlobalMousePosition();
-			if (_selectedToken.GlobalPosition.DistanceSquaredTo(currentMousePos) > 25)
-			{
-				_dragWasActuallyMovement = true;
-			}
-			_selectedToken.UpdateDragPosition(currentMousePos);
-		}
-	}
-
-	private void OnAddSelectedTokenPressed()
-	{
-		if (_selectedToken == null)
-		{
-			chatLogNode?.AddMessage("Error: No token selected to add to combat.", Colors.OrangeRed);
-			return;
-		}
-
-		string tokenDisplayName = _selectedToken.Sheet?.Name ?? _selectedToken.Name ?? "Unnamed Token";
-
-		// Recreate dialog each time to ensure it's fresh and correct token name is displayed
-		if (_initiativeDialog != null)
-		{
-			_initiativeDialog.QueueFree();
-		}
-
-		_initiativeDialog = new AcceptDialog();
-		_initiativeDialog.Title = "Enter Initiative";
-
-		VBoxContainer vbox = new VBoxContainer();
-		Label promptLabel = new Label { Text = $"Enter initiative for {tokenDisplayName}:" };
-		vbox.AddChild(promptLabel);
-
-		_initiativeLineEdit = new LineEdit { PlaceholderText = "e.g., 15" };
-		vbox.AddChild(_initiativeLineEdit);
-
-		_initiativeDialog.AddChild(vbox);
-		_initiativeDialog.Confirmed += OnInitiativeDialogConfirmed;
-		// Lambda to clean up dialog if it's closed via escape key or close button
-		_initiativeDialog.Canceled += () => {
-			if (_initiativeDialog != null) _initiativeDialog.QueueFree();
-			_initiativeDialog = null;
-		};
-		_initiativeDialog.CloseRequested += () => { // Also handles 'X' button
-			if (_initiativeDialog != null) _initiativeDialog.QueueFree();
-			_initiativeDialog = null;
-		};
-
-
-		AddChild(_initiativeDialog); // Add to scene tree to make it visible
-		_initiativeDialog.PopupCentered();
-		_initiativeLineEdit.GrabFocus(); // Focus the LineEdit for immediate input
-	}
-
-	private void OnInitiativeDialogConfirmed()
-	{
-		if (_selectedToken == null || _initiativeLineEdit == null || combatTracker == null)
-		{
-			GD.PrintErr("Dialog confirmation error: Null references during confirmation.");
-			CleanUpInitiativeDialog();
-			return;
-		}
-
-		string text = _initiativeLineEdit.Text;
-		if (int.TryParse(text, out int initiative))
-		{
-			string combatantName = _selectedToken.Sheet?.Name ?? _selectedToken.Name ?? "Unnamed Combatant";
-			Combatant newCombatant = new Combatant(combatantName, initiative, _selectedToken);
-			combatTracker.AddCombatantEntry(newCombatant);
-			// Specific log for adding combatant is handled by CombatTracker.AddCombatantEntry
-		}
-		else
-		{
-			chatLogNode?.AddMessage($"Error: Invalid initiative value '{text}'. Please enter a number.", Colors.OrangeRed);
-		}
-		CleanUpInitiativeDialog();
-	}
-
-	private void CleanUpInitiativeDialog()
-	{
-		if (_initiativeDialog != null)
-		{
-			_initiativeDialog.QueueFree();
-			_initiativeDialog = null;
-		}
-		_initiativeLineEdit = null; // LineEdit is a child of dialog, so it's freed with it
-	}
-
-	private void OnChangeTokenImageButtonPressed()
-	{
-		if (_selectedToken == null)
-		{
-			chatLogNode?.AddMessage("Error: Select a token first before changing its image.", Colors.OrangeRed);
-			return;
-		}
-
-		if (tokenImageFileDialog == null)
-		{
-			GD.PrintErr("TokenImageFileDialog is null in OnChangeTokenImageButtonPressed.");
-			return;
-		}
-
-		// Try to set current path based on existing texture
-		if (_selectedToken.TokenTexture != null && !string.IsNullOrEmpty(_selectedToken.TokenTexture.ResourcePath))
-		{
-			string dir = _selectedToken.TokenTexture.ResourcePath.GetBaseDir();
-			if (DirAccess.DirExistsAbsolute(dir) || ResourceLoader.Exists(dir)) // Check if dir is valid
-			{
-				tokenImageFileDialog.CurrentPath = dir;
-			}
-			else
-			{
-				tokenImageFileDialog.CurrentPath = "res://assets/tokens/";
-			}
-		}
-		else
-		{
-			tokenImageFileDialog.CurrentPath = "res://assets/tokens/";
-		}
-
-		tokenImageFileDialog.PopupCentered();
-	}
-
-	private void OnTokenImageFileSelected(string path)
-	{
-		if (_selectedToken == null)
-		{
-			chatLogNode?.AddMessage("Error: No token selected to apply image to.", Colors.OrangeRed);
-			return;
-		}
-
-		var newTexture = ResourceLoader.Load<Texture2D>(path);
-		if (newTexture == null)
-		{
-			chatLogNode?.AddMessage($"Error: Failed to load image from '{path}'.", Colors.OrangeRed);
-			return;
-		}
-
-		_selectedToken.TokenTexture = newTexture; // This should update the visual via the setter in Token.cs
-		string tokenName = _selectedToken.Sheet?.DisplayText ?? _selectedToken.Name ?? "Unnamed Token";
-		chatLogNode?.AddMessage($"Token '{tokenName}' image changed to {path.GetFile()}.", Colors.LawnGreen);
-	}
-
-	private void OnLoadMapButtonPressed()
-	{
-		if (mapFileDialog == null)
-		{
-			GD.PrintErr("MapFileDialog is null.");
-			return;
-		}
-		mapFileDialog.CurrentPath = "res://assets/maps/";
-		mapFileDialog.PopupCentered();
-	}
-
-	private void OnMapFileSelected(string path) // This now just calls the refactored LoadMap
-	{
-		LoadMap(path);
-	}
-
-	public bool LoadMap(string path)
-	{
-		if (string.IsNullOrEmpty(path))
-		{
-			mapBackgroundSprite.Texture = null; // Clear map if path is empty
-			chatLogNode?.AddMessage("Map cleared.", Colors.MediumPurple);
-			return true;
-		}
-
-		if (mapBackgroundSprite == null)
-		{
-			GD.PrintErr("MapBackgroundSprite is null. Cannot load map.");
-			return false;
-		}
-
-		if (!ResourceLoader.Exists(path)) // More robust check than FileAccess for res:// paths
-		{
-			chatLogNode?.AddMessage($"Error: Map image not found at '{path}'.", Colors.OrangeRed);
-			GD.PrintErr($"Map image not found at '{path}'.");
-			return false;
-		}
-
-		var newTexture = ResourceLoader.Load<Texture2D>(path);
-		if (newTexture == null)
-		{
-			chatLogNode?.AddMessage($"Error: Failed to load map image from '{path}'.", Colors.OrangeRed);
-			return false;
-		}
-		mapBackgroundSprite.Texture = newTexture;
-		chatLogNode?.AddMessage($"Map changed to {path.GetFile()}.", Colors.MediumPurple);
-		return true;
-	}
-
-
-	public void ClearExistingCampaignState()
-	{
-		// Clear tokens
-		foreach (Token token in GetTokens()) // Using new GetTokens() helper
-		{
-			token.QueueFree();
-		}
-		_selectedToken = null; // Clear selection
-
-		// Clear drawings
-		drawingOverlay?.ClearDrawings();
-		drawingOverlay?.ClearTemporaryMeasurement(); // Also clear any temp measurement lines
-
-		// Reset combat tracker
-		combatTracker?.ResetCombat(); // Assumes CombatTracker.ResetCombat() clears its state
-
-		// Clear map
-		if (mapBackgroundSprite != null)
-		{
-			mapBackgroundSprite.Texture = null;
-		}
-
-		// Clear notes (optional, could be persistent across campaign loads or part of campaign save)
-		// notesTextEdit?.Clear();
-		// For now, notes are independent.
-
-		// Clear decks (optional, similar to notes)
-		// DeckManager.AvailableDecks.Clear(); DeckManager.OnDecksChanged?.Invoke();
-		// For now, decks are independent.
-
-		// Clear chat log (optional)
-		// chatLogNode?.Clear(); // Assuming ChatLog has a Clear method
-		// chatLogNode?.AddMessage("Campaign state cleared.", Colors.Gray);
-
-		GD.Print("Cleared existing campaign state.");
-	}
-
-	public Godot.Collections.Array<Token> GetTokens()
-	{
-		var tokens = new Godot.Collections.Array<Token>();
-		foreach (Node child in GetChildren()) // Assuming tokens are direct children of MainScene
-		{
-			if (child is Token token)
-			{
-				tokens.Add(token);
-			}
-		}
-		return tokens;
-	}
-
-	// Ensure SpawnToken returns the Token instance
-	private Token SpawnToken(Vector2 position) // Changed to public and return Token
-	{
-		if (_tokenScene == null)
-		{
-			GD.PrintErr("Token scene not loaded in SpawnToken!");
-			return null;
-		}
-
-		Node tokenInstanceNode = _tokenScene.Instantiate();
-		if (tokenInstanceNode is Token tokenInstance)
-		{
-			tokenInstance.Position = position; // Initial position, might be overridden by TokenData
-			tokenInstance.Name = $"Token_{GD.Randi() % 10000}";
-
-			tokenInstance.InitializeVision(pixelsPerUnit);
-			tokenInstance.InitializeMovementLimits(pixelsPerUnit, GameUnitsPerGridSquare);
-
-			// Default sheet if not loaded from campaign data later
-			CharacterSheet sheet = new CharacterSheet
-			{
-				Name = $"Creature {GD.Randi() % 1000}",
-				MaxHealthPoints = (int)(GD.Randi() % 20) + 5,
-				ArmorClass = (int)(GD.Randi() % 8) + 10,
-				Speed = 30
-			};
-			sheet.CurrentHealthPoints = sheet.MaxHealthPoints;
-			tokenInstance.Sheet = sheet;
-
-			AddChild(tokenInstance);
-			chatLogNode?.AddMessage($"Spawned new token '{sheet.Name}' at {position}.", Colors.DarkTurquoise);
-			return tokenInstance; // Return the created token
-		}
-		else
-		{
-			GD.PrintErr("Failed to instantiate Token scene or instance is not of type Token.");
-			tokenInstanceNode?.QueueFree();
-			return null;
-		}
-	}
-
-	// New method for loading tokens from save data
-	public Token SpawnTokenAndApplyData(TokenData tokenData)
-	{
-		if (_tokenScene == null)
-		{
-			GD.PrintErr("Token scene not loaded in SpawnTokenAndApplyData!");
-			return null;
-		}
-
-		Node tokenInstanceNode = _tokenScene.Instantiate();
-		if (tokenInstanceNode is Token tokenInstance)
-		{
-			// It's important to set Name before adding to scene if other systems rely on Name during _Ready or for finding.
-			// However, ApplyTokenData might set some properties that also affect _Ready.
-			// For now, set name, add child, then apply data.
-			tokenInstance.Name = tokenData.NodeName ?? $"Token_{GD.Randi() % 10000}";
-			AddChild(tokenInstance); // Add to scene BEFORE applying data that might affect visuals or require node readiness
-
-			tokenInstance.InitializeVision(pixelsPerUnit);
-			tokenInstance.InitializeMovementLimits(pixelsPerUnit, GameUnitsPerGridSquare);
-			tokenInstance.ApplyTokenData(tokenData); // Apply all other data (pos, texture, sheet, vision states, size)
-
-			// Log specific to loading a token
-			chatLogNode?.AddMessage($"Loaded token '{tokenInstance.Sheet?.Name ?? tokenInstance.Name}' at {tokenInstance.GlobalPosition}.", Colors.LightBlue);
-			return tokenInstance;
-		}
-		else
-		{
-			GD.PrintErr("Failed to instantiate Token scene or instance is not of type Token for SpawnTokenAndApplyData.");
-			tokenInstanceNode?.QueueFree();
-			return null;
-		}
-	}
-
-
-	private void OnToggleDrawModeButtonPressed()
-	{
-		if (drawingOverlay == null)
-		{
-			GD.PrintErr("DrawingOverlay is null for Draw Mode button.");
-			return;
-		}
-		drawingOverlay.IsDrawingEnabled = !drawingOverlay.IsDrawingEnabled;
-		if (toggleDrawModeButton != null)
-		{
-			toggleDrawModeButton.Text = drawingOverlay.IsDrawingEnabled ? "Draw: ON" : "Draw: OFF";
-		}
-		_soundManager?.PlaySfx("ui_click.wav.txt"); // Added SFX
-		chatLogNode?.AddMessage($"Drawing mode: {(drawingOverlay.IsDrawingEnabled ? "Enabled" : "Disabled")}.",
-			drawingOverlay.IsDrawingEnabled ? Colors.LightSeaGreen : Colors.Orange);
-
-		// If drawing is being enabled, ensure measure mode is off
-		if (drawingOverlay.IsDrawingEnabled && _isMeasureModeActive)
-		{
-			_isMeasureModeActive = false;
-			UpdateMeasureModeButtonText(); // This will call PlaySfx again if it's also a toggle
-			drawingOverlay?.ClearTemporaryMeasurement();
-			chatLogNode?.AddMessage("Measurement mode disabled (drawing enabled).", Colors.Orange);
-		}
-	}
-
-	private void OnToggleMeasureModeButtonPressed()
-	{
-		_soundManager?.PlaySfx("ui_click.wav.txt"); // Added SFX
-		_isMeasureModeActive = !_isMeasureModeActive;
-		UpdateMeasureModeButtonText();
-
-		if (_isMeasureModeActive)
-		{
-			chatLogNode?.AddMessage("Measurement mode: Enabled. Click and drag to measure.", Colors.LightSeaGreen);
-			if (drawingOverlay != null && drawingOverlay.IsDrawingEnabled)
-			{
-				drawingOverlay.IsDrawingEnabled = false;
-				if (toggleDrawModeButton != null) toggleDrawModeButton.Text = "Draw: OFF";
-				chatLogNode?.AddMessage("Drawing mode disabled (measurement enabled).", Colors.Orange);
-			}
-		}
-		else
-		{
-			chatLogNode?.AddMessage("Measurement mode: Disabled.", Colors.Orange);
-			_isMeasuring = false;
-			drawingOverlay?.ClearTemporaryMeasurement();
-		}
-	}
-
-	private void UpdateMeasureModeButtonText()
-	{
-		if (toggleMeasureModeButton != null)
-		{
-			toggleMeasureModeButton.Text = _isMeasureModeActive ? "Measure: ON" : "Measure: OFF";
-		}
-	}
-
+	public override void _Process(double delta) { if (_isTokenCurrentlyBeingDragged && _locallyDraggedToken != null) { Vector2 currentMousePos = GetGlobalMousePosition(); if (_locallyDraggedToken.GlobalPosition.DistanceSquaredTo(currentMousePos) > 16) _dragWasActuallyMovement = true; _locallyDraggedToken.UpdateDragPosition(currentMousePos); } }
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (GetViewport().GuiGetFocusOwner() != null)
-		{
-			// If currently measuring and user clicks on UI, cancel measurement.
-			if (_isMeasuring)
-			{
-				_isMeasuring = false;
-				drawingOverlay?.ClearTemporaryMeasurement();
-			}
-			return;
-		}
-
-		{
-			// If currently measuring and user clicks on UI, cancel measurement.
-			if (_isMeasuring)
-			{
-				_isMeasuring = false;
-				drawingOverlay?.ClearTemporaryMeasurement();
-			}
-			return; // UI has focus, do not process further for game actions
-		}
-
-		// Pathfinding on Right Click
+		if (GetViewport().GuiGetFocusOwner() != null) { if (_isMeasuring) { _isMeasuring = false; drawingOverlay?.ClearTemporaryMeasurement(); } if (_isTokenCurrentlyBeingDragged && _locallyDraggedToken != null) { _locallyDraggedToken.GlobalPosition = _locallyDraggedToken.GetOriginalDragPosition(); _locallyDraggedToken.EndDragCleanup(); _isTokenCurrentlyBeingDragged = false; _locallyDraggedToken = null; chatLogNode?.AddMessage("Drag cancelled due to UI focus.", Colors.Orange); } return; }
 		if (@event is InputEventMouseButton rmb && rmb.ButtonIndex == MouseButton.Right && rmb.Pressed)
 		{
 			if (_selectedToken != null)
 			{
-				Vector2 targetPosition = GetGlobalMousePosition();
-
-				// Gather obstacles (StaticBody2D nodes under "Walls")
-				var obstacles = new Godot.Collections.Array<StaticBody2D>();
-				Node wallsNode = GetNodeOrNull("Walls");
-				if (wallsNode != null)
+				Vector2 targetPos = GetGlobalMousePosition();
+				if (networkManagerNode != null && networkManagerNode.IsNetworkActive())
 				{
-					foreach (Node child in wallsNode.GetChildren())
-					{
-						if (child is StaticBody2D staticBody)
-						{
-							obstacles.Add(staticBody);
-						}
-					}
-				}
-
-				Rect2 mapBounds = mapBackgroundSprite != null ? mapBackgroundSprite.GetRect() : GetViewportRect();
-				if (mapBackgroundSprite.Texture == null) mapBounds = GetViewportRect(); // Fallback if no map texture
-
-				PhysicsDirectSpaceState2D spaceState = GetWorld2D().DirectSpaceState;
-
-				List<Vector2> path = Pathfinder.FindPath(
-					_selectedToken.GlobalPosition,
-					targetPosition,
-					obstacles,
-					mapBounds,
-					pixelsPerUnit, // Use the class field for gridCellSize
-					spaceState
-				);
-
-				if (path != null && path.Count > 0)
-				{
-					_selectedToken.MoveAlongPath(path);
-					chatLogNode?.AddMessage($"Path found for '{_selectedToken.Sheet?.Name ?? _selectedToken.Name}'. Moving...", Colors.GreenYellow);
-				}
-				else
-				{
-					chatLogNode?.AddMessage($"No path found for '{_selectedToken.Sheet?.Name ?? _selectedToken.Name}'.", Colors.OrangeRed);
-				}
-				GetViewport().SetInputAsHandled();
-				return; // Pathfinding attempt handled, consume event
+					if (networkManagerNode.IsServer()) { var obs = GetObstaclesForPathfinding(); Rect2 bounds = GetMapBoundsForPathfinding(); PhysicsDirectSpaceState2D space = GetWorld2D().DirectSpaceState; List<Vector2> path = Pathfinder.FindPath(_selectedToken.GlobalPosition, targetPos, obs, bounds, pixelsPerUnit, space); if (path != null && path.Count > 0) { _selectedToken.MoveAlongPath(path); var arr = new Godot.Collections.Array(path.Select(p=>(Variant)p).ToArray()); networkManagerNode.Rpc(nameof(NetworkManager.RpcClientExecuteTokenPath), _selectedToken.Name.ToString(), arr); chatLogNode?.AddMessage($"Server: Path for '{_selectedToken.Name}'. Broadcasting.", Colors.DarkGreen); } else chatLogNode?.AddMessage($"Server: No path for '{_selectedToken.Name}'.", Colors.Orange); }
+					else networkManagerNode.RpcId(1, nameof(NetworkManager.RpcServerRequestTokenPathMove), _selectedToken.Name.ToString(), targetPos);
+				} else { var obs = GetObstaclesForPathfinding(); Rect2 bounds = GetMapBoundsForPathfinding(); PhysicsDirectSpaceState2D space = GetWorld2D().DirectSpaceState; List<Vector2> path = Pathfinder.FindPath(_selectedToken.GlobalPosition, targetPos, obs, bounds, pixelsPerUnit, space); if (path != null && path.Count > 0) _selectedToken.MoveAlongPath(path); else chatLogNode?.AddMessage("Offline: No path found.", Colors.Orange); }
+				GetViewport().SetInputAsHandled(); return;
 			}
 		}
-
-
-		// Measurement Logic (only if not pathfinding right click)
-		if (_isMeasureModeActive)
-		{
-			bool eventHandled = false;
-			if (@event is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left)
-			{
-				if (mb.Pressed)
-				{
-					_isMeasuring = true;
-					_measurementStartPoint = GetGlobalMousePosition();
-					_measurementEndPoint = _measurementStartPoint;
-					drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint, _measurementEndPoint, "0 " + GameUnitName);
-					eventHandled = true;
-				}
-				else // Released
-				{
-					if (_isMeasuring)
-					{
-						_isMeasuring = false;
-						_measurementEndPoint = GetGlobalMousePosition();
-						float pixelDistance = _measurementStartPoint.DistanceTo(_measurementEndPoint);
-						float gameDistance = (pixelDistance / pixelsPerUnit) * GameUnitsPerGridSquare;
-						string distanceText = $"{gameDistance:F1} {GameUnitName}";
-						drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint, _measurementEndPoint, distanceText);
-						chatLogNode?.AddMessage($"Measured: {distanceText}", Colors.Cyan);
-						eventHandled = true;
-					}
-				}
-			}
-			else if (@event is InputEventMouseMotion mm)
-			{
-				if (_isMeasuring)
-				{
-					_measurementEndPoint = GetGlobalMousePosition();
-					float pixelDistance = _measurementStartPoint.DistanceTo(_measurementEndPoint);
-					float gameDistance = (pixelDistance / pixelsPerUnit) * GameUnitsPerGridSquare;
-					string distanceText = $"{gameDistance:F1} {GameUnitName}";
-					drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint, _measurementEndPoint, distanceText);
-					eventHandled = true;
-				}
-			}
-
-			if (eventHandled)
-			{
-				GetViewport().SetInputAsHandled();
-			}
-		}
-		// If no specific mode handled input, do not call SetInputAsHandled generally for _UnhandledInput
-		// unless a specific interaction within a mode (like measurement) consumed it.
+		if (_isMeasureModeActive) { /* Measurement logic as before */ bool eh=false; if(@event is InputEventMouseButton mb && mb.ButtonIndex==MouseButton.Left){if(mb.Pressed){_isMeasuring=true;_measurementStartPoint=GetGlobalMousePosition();_measurementEndPoint=_measurementStartPoint;drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint,_measurementEndPoint,"0 "+GameUnitName);eh=true;}else if(_isMeasuring){_isMeasuring=false;_measurementEndPoint=GetGlobalMousePosition();float pd=_measurementStartPoint.DistanceTo(_measurementEndPoint);float gd=(pd/pixelsPerUnit)*GameUnitsPerGridSquare;string dt=$"{gd:F1} {GameUnitName}";drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint,_measurementEndPoint,dt);chatLogNode?.AddMessage($"Measured: {dt}",Colors.Cyan);eh=true;}}else if(@event is InputEventMouseMotion mm && _isMeasuring){_measurementEndPoint=GetGlobalMousePosition();float pd=_measurementStartPoint.DistanceTo(_measurementEndPoint);float gd=(pd/pixelsPerUnit)*GameUnitsPerGridSquare;string dt=$"{gd:F1} {GameUnitName}";drawingOverlay?.DrawTemporaryMeasurement(_measurementStartPoint,_measurementEndPoint,dt);eh=true;}if(eh)GetViewport().SetInputAsHandled();}
 	}
+	private Godot.Collections.Array<StaticBody2D> GetObstaclesForPathfinding() { var o=new Godot.Collections.Array<StaticBody2D>(); Node w=GetNodeOrNull("Walls"); if(w!=null) foreach(Node c in w.GetChildren()) if(c is StaticBody2D sb) o.Add(sb); return o; }
+	private Rect2 GetMapBoundsForPathfinding() { return mapBackgroundSprite!=null && mapBackgroundSprite.Texture!=null ? mapBackgroundSprite.GetGlobalRect() : GetViewportRect(); }
+
+	private void OnNetworkTokenPositionUpdated_Client(string tokenNodeName, Vector2 newGlobalPosition) { Node n=GetNodeOrNull(tokenNodeName); if(n is Token t){t.GlobalPosition=newGlobalPosition; t.Velocity=Vector2.Zero; t.EndDragCleanup();} else GD.PrintErr($"Client: Token '{tokenNodeName}' not found for pos update.");}
+	private void OnNetworkTokenPathExecutionRequested_Client(string tokenNodeName, Godot.Collections.Array pathPointsVariant) { Node n=GetNodeOrNull(tokenNodeName); if(n is Token t){List<Vector2> p=pathPointsVariant.Select(v=>v.AsVector2()).ToList(); if(p.Count > 0)t.MoveAlongPath(p); else chatLogNode?.AddMessage($"Token '{tokenNodeName}' received empty path.", Colors.Yellow);} else GD.PrintErr($"Client: Token '{tokenNodeName}' not found for path exec.");}
+	private void OnServerDragRequestReceived_Server(string tokenNodeName, Vector2 requestedGlobalPosition, long senderId) { if(!networkManagerNode.IsServer())return; Node n=GetNodeOrNull(tokenNodeName); if(n is Token t){t.StartDrag();t.GlobalPosition=requestedGlobalPosition;bool valid=t.PerformCollisionCheckAndRevertIfFailed();t.EndDragCleanup(); networkManagerNode.Rpc(nameof(NetworkManager.RpcClientUpdateTokenPosition),tokenNodeName,t.GlobalPosition); if(!valid)chatLogNode?.AddMessage($"Server: Reverted invalid move for '{tokenNodeName}' (req by {senderId}).", Colors.Orange); else chatLogNode?.AddMessage($"Server: Processed drag for '{tokenNodeName}' (req by {senderId}) to {t.GlobalPosition}.", Colors.DarkTurquoise);} else GD.PrintErr($"Server: Token '{tokenNodeName}' not found for drag req from {senderId}.");}
+	private void OnServerPathRequestReceived_Server(string tokenNodeName, Vector2 targetGlobalPosition, long senderId) { if(!networkManagerNode.IsServer())return; Node n=GetNodeOrNull(tokenNodeName); if(n is Token t){var obs=GetObstaclesForPathfinding(); Rect2 bounds=GetMapBoundsForPathfinding(); PhysicsDirectSpaceState2D space=GetWorld2D().DirectSpaceState; List<Vector2> p=Pathfinder.FindPath(t.GlobalPosition,targetGlobalPosition,obs,bounds,pixelsPerUnit,space); if(p!=null&&p.Count>0){t.MoveAlongPath(p);var arr=new Godot.Collections.Array(p.Select(v=>(Variant)v).ToArray()); networkManagerNode.Rpc(nameof(NetworkManager.RpcClientExecuteTokenPath),tokenNodeName,arr); chatLogNode?.AddMessage($"Server: Path for '{tokenNodeName}' (req by {senderId}). Broadcasting.", Colors.DarkGreen);} else chatLogNode?.AddMessage($"Server: No path for '{tokenNodeName}' (req by {senderId}).", Colors.Orange);} else GD.PrintErr($"Server: Token '{tokenNodeName}' not found for path req from {senderId}.");}
+	private void OnServerDiceRollRequested_Server(string diceNotation, long senderId) { if(!networkManagerNode.IsServer())return; DiceRollResult res=DiceRoller.Roll(diceNotation); DiceRollResultData data=DiceRollResultData.FromDiceRollResult(res); string json=Json.Stringify(data.ToDictionary()); string name=networkManagerNode.GetPlayerList().FirstOrDefault(p=>p.Id==senderId)?.Name ?? $"Player {senderId}"; networkManagerNode.Rpc(nameof(NetworkManager.RpcClientDisplayDiceRollResult),senderId,name,json);}
+	private void OnNetworkDiceRollResult_ClientServer(long rollerId, string rollerName, string resultDataJson) { if(chatLogNode==null)return; DiceRollResultData data=DiceRollResultData.FromDictionary(Json.ParseString(resultDataJson).AsGodotDictionary()); string msg; Color color; if(data.IsSuccess){msg=$"{rollerName} (ID:{rollerId}) rolls ({data.Notation}): {data.Breakdown}";color=Colors.Goldenrod;_soundManager?.PlaySfx("dice_roll.wav.txt");}else{msg=$"{rollerName} (ID:{rollerId}) roll error ({data.Notation}): {data.ErrorMessage}";color=Colors.OrangeRed;} chatLogNode.AddMessage(msg,color,isCombatLog:true);}
+	private void OnNetworkCombatStateReceived_Client(string combatTrackerDataJson) { if(networkManagerNode.IsServer())return; if(combatTracker==null){GD.PrintErr("Client: CombatTracker null.");return;} var parsedJson=Json.ParseString(combatTrackerDataJson); if(parsedJson.VariantType==Variant.Type.Nil){GD.PrintErr("Client: Failed to parse CombatTrackerData JSON.");chatLogNode?.AddMessage("Error: Invalid combat state from server.",Colors.Red);return;} CombatTrackerData data=CombatTrackerData.FromDictionary(parsedJson.AsGodotDictionary()); if(data!=null)combatTracker.ApplyCombatTrackerData(data,GetTokens()); else{GD.PrintErr("Client: Parsed CombatTrackerData is null.");chatLogNode?.AddMessage("Error: Could not interpret combat state from server.",Colors.Red);}}
+	public string GetCurrentMapPath() { return mapBackgroundSprite?.Texture?.ResourcePath; }
+	private void OnNetworkMapLoadRequested_Client(string mapResourcePath) { GD.Print($"Client: Received request to load map: {mapResourcePath}"); if(string.IsNullOrEmpty(mapResourcePath)) chatLogNode?.AddMessage("Server cleared map.",Colors.MediumPurple); else chatLogNode?.AddMessage($"Loading map from server: {mapResourcePath.GetFile()}",Colors.MediumPurple); LoadMap(mapResourcePath); }
+	private void OnNetworkHandoutDisplayRequested_Client(string handoutImageResourcePath)
+	{
+		GD.Print($"Client: Received request to display handout: {handoutImageResourcePath}");
+		if (handoutDisplayScene == null) { GD.PrintErr("HandoutDisplay scene not set on client!"); return; }
+		var imageTexture = ResourceLoader.Load<Texture2D>(handoutImageResourcePath);
+		if (imageTexture == null) { chatLogNode?.AddMessage($"Error: Could not load handout image '{handoutImageResourcePath.GetFile()}' from server.", Colors.Red); return; }
+		var handoutInstance = handoutDisplayScene.Instantiate<HandoutDisplay>();
+		if (handoutInstance == null) { GD.PrintErr("Failed to instance HandoutDisplay on client."); return; }
+		AddChild(handoutInstance);
+		handoutInstance.DisplayHandout(imageTexture);
+		chatLogNode?.AddMessage($"Received handout '{handoutImageResourcePath.GetFile()}' from GM.", Colors.Plum);
+	}
+
+	private void OnAddSelectedTokenPressed() { if (_selectedToken == null) { chatLogNode?.AddMessage("Error: No token selected.", Colors.OrangeRed); return; } string name = _selectedToken.Sheet?.Name ?? _selectedToken.Name ?? "Unnamed"; if (_initiativeDialog != null) _initiativeDialog.QueueFree(); _initiativeDialog = new AcceptDialog { Title = "Enter Initiative" }; VBoxContainer v = new VBoxContainer(); v.AddChild(new Label { Text = $"Initiative for {name}:" }); _initiativeLineEdit = new LineEdit { PlaceholderText = "15" }; v.AddChild(_initiativeLineEdit); _initiativeDialog.AddChild(v); _initiativeDialog.Confirmed += OnInitiativeDialogConfirmed; _initiativeDialog.Canceled += () => { if (_initiativeDialog != null) _initiativeDialog.QueueFree(); _initiativeDialog = null; }; _initiativeDialog.CloseRequested += () => { if (_initiativeDialog != null) _initiativeDialog.QueueFree(); _initiativeDialog = null; }; AddChild(_initiativeDialog); _initiativeDialog.PopupCentered(); _initiativeLineEdit.GrabFocus(); }
+	private void OnInitiativeDialogConfirmed() { if (_selectedToken == null || _initiativeLineEdit == null || combatTracker == null) { GD.PrintErr("Dialog confirm error."); CleanUpInitiativeDialog(); return; } if (int.TryParse(_initiativeLineEdit.Text, out int init)) { combatTracker.AddCombatantEntry(new Combatant(_selectedToken.Sheet?.Name ?? _selectedToken.Name ?? "Unnamed", init, _selectedToken)); } else chatLogNode?.AddMessage($"Error: Invalid initiative '{_initiativeLineEdit.Text}'.", Colors.OrangeRed); CleanUpInitiativeDialog(); }
+	private void CleanUpInitiativeDialog() { if (_initiativeDialog != null) { _initiativeDialog.QueueFree(); _initiativeDialog = null; } _initiativeLineEdit = null; }
+	private void OnChangeTokenImageButtonPressed() { if (_selectedToken == null) { chatLogNode?.AddMessage("Error: Select token first.", Colors.OrangeRed); return; } if (tokenImageFileDialog == null) { GD.PrintErr("TokenImageFileDialog null."); return; } if (_selectedToken.TokenTexture != null && !string.IsNullOrEmpty(_selectedToken.TokenTexture.ResourcePath)) { string dir = _selectedToken.TokenTexture.ResourcePath.GetBaseDir(); tokenImageFileDialog.CurrentPath = (DirAccess.DirExistsAbsolute(dir) || ResourceLoader.Exists(dir)) ? dir : "res://assets/tokens/"; } else tokenImageFileDialog.CurrentPath = "res://assets/tokens/"; tokenImageFileDialog.PopupCentered(); }
+	private void OnTokenImageFileSelected(string path) { if (_selectedToken == null) { chatLogNode?.AddMessage("Error: No token selected.", Colors.OrangeRed); return; } var tex = ResourceLoader.Load<Texture2D>(path); if (tex == null) { chatLogNode?.AddMessage($"Error: Failed to load image '{path}'.", Colors.OrangeRed); return; } _selectedToken.TokenTexture = tex; string tokenName = _selectedToken.Sheet?.DisplayText ?? _selectedToken.Name ?? "Unnamed"; chatLogNode?.AddMessage($"Token '{tokenName}' image changed to {path.GetFile()}.", Colors.LawnGreen);
+		// If server, broadcast this change
+		if (networkManagerNode != null && networkManagerNode.IsServer())
+		{
+			// This would require a new RPC like RpcClientUpdateTokenTexture(string tokenName, string texturePath)
+			// For now, this change is local unless saved in campaign.
+			// networkManagerNode.Rpc(nameof(NetworkManager.RpcClientUpdateTokenTexture), _selectedToken.Name.ToString(), path);
+			chatLogNode?.AddMessage($"Note: Token texture change for '{tokenName}' is currently local. Save campaign to persist for all.", Colors.LightYellow);
+		}
+	}
+	private void OnLoadMapButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (mapFileDialog == null) { GD.PrintErr("MapFileDialog null."); return; } mapFileDialog.CurrentPath = "res://assets/maps/"; mapFileDialog.PopupCentered(); }
+	public bool LoadMap(string path) { if (mapBackgroundSprite == null) { GD.PrintErr("MapBackgroundSprite null."); return false; } if (string.IsNullOrEmpty(path)) { mapBackgroundSprite.Texture = null; chatLogNode?.AddMessage("Map cleared.", Colors.MediumPurple); return true; } if (!ResourceLoader.Exists(path)) { chatLogNode?.AddMessage($"Error: Map not found at '{path}'.", Colors.OrangeRed); return false; } var tex = ResourceLoader.Load<Texture2D>(path); if (tex == null) { chatLogNode?.AddMessage($"Error: Failed to load map '{path}'.", Colors.OrangeRed); return false; } mapBackgroundSprite.Texture = tex; chatLogNode?.AddMessage($"Map changed to {path.GetFile()}.", Colors.MediumPurple); return true; }
+	public void ClearExistingCampaignState() { foreach (Token token in GetTokens()) token.QueueFree(); _selectedToken = null; drawingOverlay?.ClearDrawings(); drawingOverlay?.ClearTemporaryMeasurement(); combatTracker?.ResetCombat(); if (mapBackgroundSprite != null) mapBackgroundSprite.Texture = null; GD.Print("Campaign state cleared."); chatLogNode?.AddMessage("Campaign state cleared.", Colors.Gray); }
+	public Godot.Collections.Array<Token> GetTokens() { var tokens = new Godot.Collections.Array<Token>(); foreach (Node child in GetChildren()) if (child is Token token && IsInstanceValid(token)) tokens.Add(token); return tokens; } // Added IsInstanceValid
+	private void OnToggleDrawModeButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (drawingOverlay == null) return; drawingOverlay.IsDrawingEnabled = !drawingOverlay.IsDrawingEnabled; if (toggleDrawModeButton != null) toggleDrawModeButton.Text = drawingOverlay.IsDrawingEnabled ? "Draw: ON" : "Draw: OFF"; chatLogNode?.AddMessage($"Drawing: {(drawingOverlay.IsDrawingEnabled ? "ON" : "OFF")}.", drawingOverlay.IsDrawingEnabled ? Colors.LightSeaGreen : Colors.Orange); if (drawingOverlay.IsDrawingEnabled && _isMeasureModeActive) { _isMeasureModeActive = false; UpdateMeasureModeButtonText(); drawingOverlay?.ClearTemporaryMeasurement(); chatLogNode?.AddMessage("Measure mode OFF (drawing ON).", Colors.Orange); } }
+	private void OnToggleMeasureModeButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); _isMeasureModeActive = !_isMeasureModeActive; UpdateMeasureModeButtonText(); if (_isMeasureModeActive) { chatLogNode?.AddMessage("Measure mode: ON.", Colors.LightSeaGreen); if (drawingOverlay != null && drawingOverlay.IsDrawingEnabled) { drawingOverlay.IsDrawingEnabled = false; if (toggleDrawModeButton != null) toggleDrawModeButton.Text = "Draw: OFF"; chatLogNode?.AddMessage("Draw mode OFF (measure ON).", Colors.Orange); } } else { chatLogNode?.AddMessage("Measure mode: OFF.", Colors.Orange); _isMeasuring = false; drawingOverlay?.ClearTemporaryMeasurement(); } }
+	private void UpdateMeasureModeButtonText() { if (toggleMeasureModeButton != null) toggleMeasureModeButton.Text = _isMeasureModeActive ? "Measure: ON" : "Measure: OFF"; }
+	private void OnShareHandoutButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (handoutDisplayScene == null) { chatLogNode?.AddMessage("Error: HandoutDisplay scene not set.", Colors.Red); return; } if (handoutImageFileDialog == null) return; handoutImageFileDialog.CurrentPath = "res://assets/handouts/"; handoutImageFileDialog.PopupCentered(); }
+	private void OnHandoutImageFileSelected(string path) { if (handoutDisplayScene == null) return; var tex = ResourceLoader.Load<Texture2D>(path); if (tex == null) { chatLogNode?.AddMessage($"Error: Failed to load handout '{path}'.", Colors.OrangeRed); return; } Node hi = handoutDisplayScene.Instantiate(); if (hi is HandoutDisplay hdi) { AddChild(hdi); hdi.DisplayHandout(tex); chatLogNode?.AddMessage($"GM shared handout: {path.GetFile()}", Colors.MediumPurple); if (networkManagerNode != null && networkManagerNode.IsServer()) { networkManagerNode.Rpc(nameof(NetworkManager.RpcClientShowHandout), path); } } else { GD.PrintErr("Failed to instance HandoutDisplay."); hi?.QueueFree(); } }
+	private void LoadNotes() { if (notesTextEdit == null) return; ConfigFile cfg = new ConfigFile(); Error err = cfg.Load(NotesFilePath); if (err == Error.Ok) notesTextEdit.Text = cfg.GetValue("Notes", "Content", "").ToString(); else if (err != Error.FileNotFound) { GD.PrintErr($"Error loading notes: {err}"); chatLogNode?.AddMessage($"Error loading notes: {err}", Colors.Red); } }
+	private void OnToggleNotesButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (notesPanel == null) return; notesPanel.Visible = !notesPanel.Visible; if (notesPanel.Visible) { notesTextEdit?.GrabFocus(); chatLogNode?.AddMessage("Notes ON.", Colors.DarkGray); } else chatLogNode?.AddMessage("Notes OFF.", Colors.DarkGray); }
+	private void OnNotesTextChanged() { if (notesTextEdit == null) return; ConfigFile cfg = new ConfigFile(); cfg.SetValue("Notes", "Content", notesTextEdit.Text); Error err = cfg.Save(NotesFilePath); if (err != Error.Ok) { GD.PrintErr($"Error saving notes: {err}"); chatLogNode?.AddMessage($"Error saving notes: {err}", Colors.Red); } }
+	private void OnToggleDecksPanelButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (decksPanel == null) return; decksPanel.Visible = !decksPanel.Visible; chatLogNode?.AddMessage($"Decks panel {(decksPanel.Visible ? "ON" : "OFF")}.", Colors.DarkSlateBlue); }
+	private void OnToggleMusicButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (_soundManager == null) return; _isMusicPlaying = !_isMusicPlaying; if (_isMusicPlaying) _soundManager.PlayMusic("ambient_music.ogg.txt"); else _soundManager.StopMusic(); UpdateMusicButtonText(); }
+	private void UpdateMusicButtonText() { if (toggleMusicButton != null) toggleMusicButton.Text = _isMusicPlaying ? "Music: Stop" : "Music: Play"; }
+	private void OnToggleMacroPanelButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (macroPanel == null) return; macroPanel.Visible = !macroPanel.Visible; if (macroPanel.Visible) { macroInputTextEdit?.GrabFocus(); chatLogNode?.AddMessage("Macro panel ON.", Colors.DarkGoldenrod); } else chatLogNode?.AddMessage("Macro panel OFF.", Colors.DarkGoldenrod); }
+	private void OnRunMacroButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (macroInputTextEdit == null || chatLogNode == null) { GD.PrintErr("Macro input/ChatLog missing."); return; } string scr = macroInputTextEdit.Text; if (string.IsNullOrWhiteSpace(scr)) { chatLogNode.AddMessage("[MACRO] Empty script.", Colors.OrangeRed); return; } MacroContext ctx = new MacroContext { Chat = chatLogNode, SelectedToken = _selectedToken, Combat = combatTracker, MainSceneInstance = this }; chatLogNode.AddMessage("[MACRO] Executing...", Colors.DarkGoldenrod); MacroEngine.ExecuteMacro(scr, ctx); chatLogNode.AddMessage("[MACRO] Finished.", Colors.DarkGoldenrod); }
+	private void OnSaveCampaignButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (campaignFileDialog == null) return; campaignFileDialog.FileMode = FileDialog.FileModeEnum.SaveFile; campaignFileDialog.ClearFilters(); campaignFileDialog.AddFilter($"*{CampaignFileExtension} ; VTT Campaign"); campaignFileDialog.CurrentPath = $"user://campaign_save{CampaignFileExtension}"; campaignFileDialog.PopupCentered(); }
+	private void OnLoadCampaignButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (campaignFileDialog == null) return; campaignFileDialog.FileMode = FileDialog.FileModeEnum.OpenFile; campaignFileDialog.ClearFilters(); campaignFileDialog.AddFilter($"*{CampaignFileExtension} ; VTT Campaign"); campaignFileDialog.CurrentPath = "user://"; campaignFileDialog.PopupCentered(); }
+	private void OnCampaignFileSelected(string path) { if (campaignFileDialog == null) return; if (campaignFileDialog.FileMode == FileDialog.FileModeEnum.SaveFile) { if (!path.EndsWith(CampaignFileExtension)) path += CampaignFileExtension; CampaignManager.SaveCampaign(path, this); } else CampaignManager.LoadCampaign(path, this); }
+	private void OnHostButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (portInput == null || !int.TryParse(portInput.Text, out int port) || port <= 0 || port > 65535) { networkStatusLabel.Text = "Status: Invalid port."; chatLogNode?.AddMessage("Invalid port for hosting.", Colors.Red); return; } networkManagerNode?.HostGame(port); }
+	private void OnJoinButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (serverIpInput == null || portInput == null || networkStatusLabel == null) return; string ip = serverIpInput.Text.Trim(); if (string.IsNullOrEmpty(ip)) { networkStatusLabel.Text = "Status: IP empty."; chatLogNode?.AddMessage("IP for joining empty.", Colors.Red); return; } if (!int.TryParse(portInput.Text, out int port) || port <= 0 || port > 65535) { networkStatusLabel.Text = "Status: Invalid port."; chatLogNode?.AddMessage("Invalid port for joining.", Colors.Red); return; } networkStatusLabel.Text = $"Status: Joining {ip}:{port}..."; networkManagerNode?.JoinGame(ip, port); }
+	private void OnDisconnectButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); networkManagerNode?.DisconnectNetwork(); networkStatusLabel.Text = "Status: Disconnected."; chatLogNode?.AddMessage("Disconnected.", Colors.Orange); hostButton.Disabled = false; joinButton.Disabled = false; disconnectButton.Disabled = true; }
+	private void OnNetworkServerCreated() { networkStatusLabel.Text = $"Status: HOSTING on port {portInput.Text}."; chatLogNode?.AddMessage($"Server created on port {portInput.Text}.", Colors.Green); hostButton.Disabled = true; joinButton.Disabled = true; disconnectButton.Disabled = false; }
+	private void OnNetworkServerCreationFailed(string reason) { networkStatusLabel.Text = $"Status: Server creation FAILED: {reason}"; chatLogNode?.AddMessage($"Server creation failed: {reason}", Colors.Red); hostButton.Disabled = false; joinButton.Disabled = false; disconnectButton.Disabled = true; }
+	private void OnNetworkConnectionSucceeded() { networkStatusLabel.Text = "Status: Connected to server!"; chatLogNode?.AddMessage("Connected to server.", Colors.Green); hostButton.Disabled = true; joinButton.Disabled = true; disconnectButton.Disabled = false; }
+	private void OnNetworkConnectionFailed() { networkStatusLabel.Text = "Status: Connection FAILED."; chatLogNode?.AddMessage("Failed to connect.", Colors.Red); hostButton.Disabled = false; joinButton.Disabled = false; disconnectButton.Disabled = true; }
+	private void OnNetworkPeerConnected(long id) { networkStatusLabel.Text = $"Status: Player {id} connected."; chatLogNode?.AddMessage($"Player {id} connected.", Colors.LawnGreen); }
+	private void OnNetworkPeerDisconnected(long id) { networkStatusLabel.Text = $"Status: Player {id} disconnected."; chatLogNode?.AddMessage($"Player {id} disconnected.", Colors.Orange); }
+	private void OnNetworkServerDisconnected() { networkStatusLabel.Text = "Status: Disconnected from server."; chatLogNode?.AddMessage("Disconnected from server.", Colors.OrangeRed); hostButton.Disabled = false; joinButton.Disabled = false; disconnectButton.Disabled = true; }
+	private void OnNetworkPlayerListUpdated() { if (playerListDisplay == null || networkManagerNode == null) return; playerListDisplay.Clear(); var players = networkManagerNode.GetPlayerList(); if (players.Count == 0) playerListDisplay.AddItem("No players connected."); else { for(int i = 0; i < players.Count; i++) { if (players[i].AsGodotObject() is NetworkPlayer player) playerListDisplay.AddItem($"ID: {player.Id} - Name: {player.Name}"); else GD.Print($"Error: Player data at index {i} not NetworkPlayer."); } } chatLogNode?.AddMessage($"Player list updated. Count: {players.Count}", Colors.LightSteelBlue); }
+	private void OnSpawnTestNetworkTokenButtonPressed() { _soundManager?.PlaySfx("ui_click.wav.txt"); if (networkManagerNode == null || !networkManagerNode.IsServer()) { chatLogNode?.AddMessage("Only host can spawn test net tokens.", Colors.OrangeRed); return; } string uniqueName = $"NetToken_{GD.Randi() % 10000}"; Vector2 spawnPos = new Vector2( (float)GD.RandRange(150, 450), (float)GD.RandRange(150, 350) ); CharacterSheetData sheetData = new CharacterSheetData { Name = $"NetCreature {GD.Randi() % 100}", MaxHealthPoints = 20, CurrentHealthPoints = 20, ArmorClass = 12, Speed = 30 }; sheetData.CustomProperties.Add("SpawnedBy", "NetworkTestButton"); TokenData tokenDataForNetwork = new TokenData { NodeName = uniqueName, Position = new Vector2Data(spawnPos), TexturePath = "res://icon.svg", SheetData = sheetData, HasVision = true, VisionRangeGameUnits = 6.0f, Size = new Vector2Data(new Vector2(128,128)) }; Token spawnedToken = SpawnTokenAndApplyData(tokenDataForNetwork); if (spawnedToken == null) { GD.PrintErr("Failed to spawn test token locally on server."); chatLogNode?.AddMessage("Error: Failed to spawn test token locally.", Colors.Red); return; } string actualSheetJson = Json.Stringify(spawnedToken.Sheet.ToDictionary()); string actualTexturePath = spawnedToken.TokenTexture?.ResourcePath ?? ""; networkManagerNode.Rpc(nameof(NetworkManager.RpcClientDoSpawnToken), spawnedToken.Name.ToString(), spawnedToken.GlobalPosition, actualTexturePath, actualSheetJson, spawnedToken.HasVision, spawnedToken.VisionRangeGameUnits, spawnedToken.Size); chatLogNode?.AddMessage($"Host spawned test token: {spawnedToken.Name}", Colors.LightGreen); }
+	private void OnNetworkSpawnTokenRequested(string tokenNodeName, Vector2 globalPosition, string texturePath, string sheetDataJson, bool hasVision, float visionRangeGameUnits, Vector2 sizeVec) { if (GetNodeOrNull(tokenNodeName) != null) { GD.Print($"Client: Token {tokenNodeName} already exists."); return; } GD.Print($"Client: Received request to spawn token: {tokenNodeName}"); CharacterSheetData sheetData = new CharacterSheetData(); if (!string.IsNullOrEmpty(sheetDataJson)) { var parseResult = Json.ParseString(sheetDataJson); if (parseResult.VariantType == Variant.Type.Dictionary) sheetData = CharacterSheetData.FromDictionary(parseResult.AsGodotDictionary()); else GD.PrintErr($"Client: Failed to parse sheetDataJson for {tokenNodeName}."); } TokenData tokenData = new TokenData { NodeName = tokenNodeName, Position = new Vector2Data(globalPosition), TexturePath = texturePath, SheetData = sheetData, HasVision = hasVision, VisionRangeGameUnits = visionRangeGameUnits, Size = new Vector2Data(sizeVec) }; Token spawnedToken = SpawnTokenAndApplyData(tokenData); if (spawnedToken != null) chatLogNode?.AddMessage($"Remote token spawned: {spawnedToken.Name}", Colors.LightSkyBlue); else chatLogNode?.AddMessage($"Error: Failed to spawn remote token {tokenNodeName}", Colors.Red); }
+	private void OnNetworkChatMessageReceived(long senderId, string senderName, string messageContent) { if (chatLogNode == null) return; string formattedMessage = $"{senderName} (ID:{senderId}): {messageContent}"; Color messageColor = (senderId == Multiplayer.GetUniqueId()) ? Colors.LightYellow : Colors.WhiteSmoke; if (senderId == 1 && Multiplayer.GetUniqueId() != 1) messageColor = Colors.Aqua; chatLogNode.AddMessage(formattedMessage, messageColor); if ((messageContent.StartsWith("Dice Roll (") || messageContent.StartsWith("Dice Roll Error (")) && senderId != Multiplayer.GetUniqueId()) { if (messageContent.StartsWith("Dice Roll (")) _soundManager?.PlaySfx("dice_roll.wav.txt"); } }
 }
