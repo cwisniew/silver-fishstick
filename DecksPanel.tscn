@@ -1,0 +1,113 @@
+[gd_scene load_steps=2 format=3 uid="uid://decks_panel_scene"]
+
+[ext_resource type="Script" path="res://DecksPanel.cs" id="1_deck_panel_cs"]
+
+[node name="DecksPanel" type="PanelContainer" node_paths=PackedStringArray("deckListDisplay", "createDeckButton", "deleteDeckButton", "selectedDeckNameLabel", "shuffleButton", "drawButton", "resetDeckButton", "lastDrawnCardLabel", "discardPileDisplay")]
+anchors_preset = 7 # Anchor Right Wide
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -350.0 # Width of the panel
+offset_top = -250.0  # Half height
+offset_right = 0.0
+offset_bottom = 250.0 # Half height
+grow_horizontal = 0
+grow_vertical = 2 # Center vertically
+custom_minimum_size = Vector2(300, 400)
+visible = false # Initially hidden
+script = ExtResource("1_deck_panel_cs")
+deckListDisplay = NodePath("VBoxMain/HBoxDeckSelection/DeckListDisplay")
+createDeckButton = NodePath("VBoxMain/HBoxDeckSelection/VBoxDeckButtons/CreateDeckButton")
+deleteDeckButton = NodePath("VBoxMain/HBoxDeckSelection/VBoxDeckButtons/DeleteDeckButton")
+selectedDeckNameLabel = NodePath("VBoxMain/VBoxSelectedDeck/SelectedDeckNameLabel")
+shuffleButton = NodePath("VBoxMain/VBoxSelectedDeck/HBoxDeckActions/ShuffleButton")
+drawButton = NodePath("VBoxMain/VBoxSelectedDeck/HBoxDeckActions/DrawButton")
+resetDeckButton = NodePath("VBoxMain/VBoxSelectedDeck/HBoxDeckActions/ResetDeckButton")
+lastDrawnCardLabel = NodePath("VBoxMain/VBoxSelectedDeck/LastDrawnCardLabel")
+discardPileDisplay = NodePath("VBoxMain/VBoxSelectedDeck/DiscardPileDisplay")
+
+
+[node name="VBoxMain" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="LabelDeckManagement" type="Label" parent="VBoxMain"]
+layout_mode = 2
+text = "Deck Management"
+horizontal_alignment = 1 # Center
+
+[node name="HSeparator" type="HSeparator" parent="VBoxMain"]
+layout_mode = 2
+
+[node name="HBoxDeckSelection" type="HBoxContainer" parent="VBoxMain"]
+layout_mode = 2
+size_flags_vertical = 3 # Expand
+
+[node name="DeckListDisplay" type="ItemList" parent="VBoxMain/HBoxDeckSelection"]
+layout_mode = 2
+size_flags_horizontal = 3 # Expand
+size_flags_vertical = 3 # Expand
+custom_minimum_size = Vector2(150, 0)
+
+[node name="VBoxDeckButtons" type="VBoxContainer" parent="VBoxMain/HBoxDeckSelection"]
+layout_mode = 2
+alignment = 1 # Center buttons
+
+[node name="CreateDeckButton" type="Button" parent="VBoxMain/HBoxDeckSelection/VBoxDeckButtons"]
+layout_mode = 2
+text = "New Deck"
+
+[node name="DeleteDeckButton" type="Button" parent="VBoxMain/HBoxDeckSelection/VBoxDeckButtons"]
+layout_mode = 2
+text = "Delete Deck"
+
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxMain"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10) # Margin
+
+[node name="VBoxSelectedDeck" type="VBoxContainer" parent="VBoxMain"]
+layout_mode = 2
+size_flags_vertical = 3 # Expand
+
+[node name="SelectedDeckNameLabel" type="Label" parent="VBoxMain/VBoxSelectedDeck"]
+layout_mode = 2
+text = "No Deck Selected"
+horizontal_alignment = 1
+
+[node name="HBoxDeckActions" type="HBoxContainer" parent="VBoxMain/VBoxSelectedDeck"]
+layout_mode = 2
+alignment = 1 # Center buttons
+
+[node name="ShuffleButton" type="Button" parent="VBoxMain/VBoxSelectedDeck/HBoxDeckActions"]
+layout_mode = 2
+text = "Shuffle"
+disabled = true
+
+[node name="DrawButton" type="Button" parent="VBoxMain/VBoxSelectedDeck/HBoxDeckActions"]
+layout_mode = 2
+text = "Draw Card"
+disabled = true
+
+[node name="ResetDeckButton" type="Button" parent="VBoxMain/VBoxSelectedDeck/HBoxDeckActions"]
+layout_mode = 2
+text = "Reset (Shuffle Discard In)"
+disabled = true
+
+[node name="LastDrawnCardLabel" type="Label" parent="VBoxMain/VBoxSelectedDeck"]
+layout_mode = 2
+text = "Last Drawn: -"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="LabelDiscardPile" type="Label" parent="VBoxMain/VBoxSelectedDeck"]
+layout_mode = 2
+text = "Discard Pile:"
+
+[node name="DiscardPileDisplay" type="ItemList" parent="VBoxMain/VBoxSelectedDeck"]
+layout_mode = 2
+size_flags_vertical = 3 # Expand
+custom_minimum_size = Vector2(0, 100)
+select_mode = 1 # ItemList.SELECT_MULTI if we want to allow selecting multiple from discard
+mouse_filter = 2 # MOUSE_FILTER_IGNORE if not interactive
+disabled = true # Initially

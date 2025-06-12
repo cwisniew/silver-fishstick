@@ -1,0 +1,293 @@
+using Godot;
+using System.Collections.Generic; // For List
+using System.Linq; // For Select in ToDictionary
+
+// --- Basic Data Structures ---
+public class Vector2Data
+{
+	public float X { get; set; }
+	public float Y { get; set; }
+
+	public Vector2Data() { }
+	public Vector2Data(Vector2 vector) { X = vector.X; Y = vector.Y; }
+	public Vector2 ToVector2() => new Vector2(X, Y);
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary { { "X", X }, { "Y", Y } };
+	public static Vector2Data FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		return new Vector2Data
+		{
+			X = dict.ContainsKey("X") ? dict["X"].AsSingle() : 0f,
+			Y = dict.ContainsKey("Y") ? dict["Y"].AsSingle() : 0f
+		};
+	}
+}
+
+public class ColorData
+{
+	public float R { get; set; }
+	public float G { get; set; }
+	public float B { get; set; }
+	public float A { get; set; }
+
+	public ColorData() { }
+	public ColorData(Color color) { R = color.R; G = color.G; B = color.B; A = color.A; }
+	public Color ToColor() => new Color(R, G, B, A);
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary { { "R", R }, { "G", G }, { "B", B }, { "A", A } };
+	public static ColorData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		return new ColorData
+		{
+			R = dict.ContainsKey("R") ? dict["R"].AsSingle() : 0f,
+			G = dict.ContainsKey("G") ? dict["G"].AsSingle() : 0f,
+			B = dict.ContainsKey("B") ? dict["B"].AsSingle() : 0f,
+			A = dict.ContainsKey("A") ? dict["A"].AsSingle() : 1f
+		};
+	}
+}
+
+// --- Character Sheet & Token ---
+public class CharacterSheetData
+{
+	public string Name { get; set; } = "Unnamed";
+	public int MaxHealthPoints { get; set; } = 10;
+	public int CurrentHealthPoints { get; set; } = 10;
+	public int ArmorClass { get; set; } = 10;
+	public int Speed { get; set; } = 30;
+	public Godot.Collections.Dictionary<string, string> CustomProperties { get; set; } = new Godot.Collections.Dictionary<string, string>();
+
+	public CharacterSheetData() { }
+	public CharacterSheetData(CharacterSheet sheet) // Assumes CharacterSheet class exists
+	{
+		if (sheet == null) return;
+		Name = sheet.Name;
+		MaxHealthPoints = sheet.MaxHealthPoints;
+		CurrentHealthPoints = sheet.CurrentHealthPoints;
+		ArmorClass = sheet.ArmorClass;
+		Speed = sheet.Speed;
+		CustomProperties = new Godot.Collections.Dictionary<string, string>(sheet.CustomProperties); // Make a copy
+	}
+
+	public CharacterSheet ToCharacterSheet()
+	{
+		var sheet = new CharacterSheet
+		{
+			Name = this.Name,
+			MaxHealthPoints = this.MaxHealthPoints,
+			CurrentHealthPoints = this.CurrentHealthPoints,
+			ArmorClass = this.ArmorClass,
+			Speed = this.Speed,
+			CustomProperties = new Dictionary<string, string>(this.CustomProperties.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value.ToString()))
+		};
+		return sheet;
+	}
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "Name", Name }, { "MaxHP", MaxHealthPoints }, { "CurHP", CurrentHealthPoints },
+		{ "AC", ArmorClass }, { "Speed", Speed }, { "CustomProps", CustomProperties }
+	};
+
+	public static CharacterSheetData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		var data = new CharacterSheetData();
+		data.Name = dict.GetOrDefault("Name", "Unnamed").ToString();
+		data.MaxHealthPoints = dict.GetOrDefault("MaxHP", 10).AsInt32();
+		data.CurrentHealthPoints = dict.GetOrDefault("CurHP", 10).AsInt32();
+		data.ArmorClass = dict.GetOrDefault("AC", 10).AsInt32();
+		data.Speed = dict.GetOrDefault("Speed", 30).AsInt32();
+		if (dict.ContainsKey("CustomProps") && dict["CustomProps"].VariantType == Variant.Type.Dictionary)
+		{
+			data.CustomProperties = dict["CustomProps"].AsGodotDictionary<string, string>();
+		}
+		return data;
+	}
+}
+
+public class TokenData
+{
+	public Vector2Data Position { get; set; }
+	public float RotationDegrees { get; set; }
+	public string TexturePath { get; set; }
+	public CharacterSheetData SheetData { get; set; }
+	public bool HasVision { get; set; } = true;
+	public float VisionRangeGameUnits { get; set; } = 6.0f;
+	public string NodeName { get; set; } // Godot Node.Name, could be useful for re-linking if IDs are not stable
+	public Vector2Data Size {get; set; } // Token's size
+
+	public TokenData() { }
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "Position", Position?.ToDictionary() }, { "RotationDegrees", RotationDegrees },
+		{ "TexturePath", TexturePath }, { "SheetData", SheetData?.ToDictionary() },
+		{ "HasVision", HasVision }, { "VisionRange", VisionRangeGameUnits },
+		{ "NodeName", NodeName }, {"Size", Size?.ToDictionary() }
+	};
+
+	public static TokenData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		var data = new TokenData();
+		if (dict.ContainsKey("Position")) data.Position = Vector2Data.FromDictionary(dict["Position"].AsGodotDictionary());
+		data.RotationDegrees = dict.GetOrDefault("RotationDegrees", 0f).AsSingle();
+		data.TexturePath = dict.GetOrDefault("TexturePath", "").ToString();
+		if (dict.ContainsKey("SheetData")) data.SheetData = CharacterSheetData.FromDictionary(dict["SheetData"].AsGodotDictionary());
+		data.HasVision = dict.GetOrDefault("HasVision", true).AsBool();
+		data.VisionRangeGameUnits = dict.GetOrDefault("VisionRange", 6.0f).AsSingle();
+		data.NodeName = dict.GetOrDefault("NodeName", "Token").ToString();
+		if (dict.ContainsKey("Size")) data.Size = Vector2Data.FromDictionary(dict["Size"].AsGodotDictionary());
+		return data;
+	}
+}
+
+// --- Combat Tracker ---
+// These are simplified for now
+public class CombatantData
+{
+	public string Name { get; set; } // Could be CharacterSheet.Name or a custom name
+	public int Initiative { get; set; }
+	// If LinkedToken is saved, how to relink? By NodeName? Index? UUID?
+	// For now, just storing name. If it's a token, its TokenData will be in the main token list.
+	public string LinkedTokenNodeName { get; set; } // Store NodeName of the token if linked
+
+	public CombatantData() { }
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "Name", Name }, { "Initiative", Initiative }, { "LinkedTokenNodeName", LinkedTokenNodeName }
+	};
+	public static CombatantData FromDictionary(Godot.Collections.Dictionary dict) => new CombatantData
+	{
+		Name = dict.GetOrDefault("Name", "Combatant").ToString(),
+		Initiative = dict.GetOrDefault("Initiative", 0).AsInt32(),
+		LinkedTokenNodeName = dict.GetOrDefault("LinkedTokenNodeName", "").ToString()
+	};
+}
+
+public class CombatTrackerData
+{
+	public List<CombatantData> Combatants { get; set; } = new List<CombatantData>();
+	public int CurrentTurnIndex { get; set; } = -1;
+	public int RoundNumber { get; set; } = 0;
+	public bool CombatStarted { get; set; } = false;
+
+	public CombatTrackerData() { }
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "Combatants", new Godot.Collections.Array(Combatants.Select(c => c.ToDictionary())) },
+		{ "CurrentTurnIndex", CurrentTurnIndex }, { "RoundNumber", RoundNumber }, { "CombatStarted", CombatStarted }
+	};
+	public static CombatTrackerData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		var data = new CombatTrackerData();
+		if (dict.ContainsKey("Combatants"))
+		{
+			foreach (var item in dict["Combatants"].AsGodotArray())
+				data.Combatants.Add(CombatantData.FromDictionary(item.AsGodotDictionary()));
+		}
+		data.CurrentTurnIndex = dict.GetOrDefault("CurrentTurnIndex", -1).AsInt32();
+		data.RoundNumber = dict.GetOrDefault("RoundNumber", 0).AsInt32();
+		data.CombatStarted = dict.GetOrDefault("CombatStarted", false).AsBool();
+		return data;
+	}
+}
+
+// --- Drawings ---
+public class DrawingLineData
+{
+	public List<Vector2Data> Points { get; set; } = new List<Vector2Data>();
+	public ColorData LineColor { get; set; }
+	public float Thickness { get; set; }
+
+	public DrawingLineData() { }
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "Points", new Godot.Collections.Array(Points.Select(p => p.ToDictionary())) },
+		{ "LineColor", LineColor?.ToDictionary() }, { "Thickness", Thickness }
+	};
+	public static DrawingLineData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		var data = new DrawingLineData();
+		if (dict.ContainsKey("Points"))
+		{
+			foreach (var item in dict["Points"].AsGodotArray())
+				data.Points.Add(Vector2Data.FromDictionary(item.AsGodotDictionary()));
+		}
+		if (dict.ContainsKey("LineColor")) data.LineColor = ColorData.FromDictionary(dict["LineColor"].AsGodotDictionary());
+		data.Thickness = dict.GetOrDefault("Thickness", 2f).AsSingle();
+		return data;
+	}
+}
+
+
+// --- Root Save Object ---
+public class CampaignRootData
+{
+	public string CurrentMapPath { get; set; }
+	public List<TokenData> Tokens { get; set; } = new List<TokenData>();
+	public CombatTrackerData CombatState { get; set; } // Placeholder for now
+	public List<DrawingLineData> Drawings { get; set; } = new List<DrawingLineData>(); // Placeholder
+
+	public CampaignRootData() { }
+
+	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	{
+		{ "CurrentMapPath", CurrentMapPath },
+		{ "Tokens", new Godot.Collections.Array(Tokens.Select(t => t.ToDictionary())) },
+		{ "CombatState", CombatState?.ToDictionary() },
+		{ "Drawings", new Godot.Collections.Array(Drawings.Select(d => d.ToDictionary())) }
+	};
+
+	public static CampaignRootData FromDictionary(Godot.Collections.Dictionary dict)
+	{
+		var data = new CampaignRootData();
+		data.CurrentMapPath = dict.GetOrDefault("CurrentMapPath", "").ToString();
+		if (dict.ContainsKey("Tokens"))
+		{
+			foreach (var item in dict["Tokens"].AsGodotArray())
+				data.Tokens.Add(TokenData.FromDictionary(item.AsGodotDictionary()));
+		}
+		if (dict.ContainsKey("CombatState")) data.CombatState = CombatTrackerData.FromDictionary(dict["CombatState"].AsGodotDictionary());
+		if (dict.ContainsKey("Drawings"))
+		{
+			foreach (var item in dict["Drawings"].AsGodotArray())
+				data.Drawings.Add(DrawingLineData.FromDictionary(item.AsGodotDictionary()));
+		}
+		return data;
+	}
+}
+
+// Helper for GetOrDefault from Godot.Collections.Dictionary
+public static class GodotDictionaryExtensions
+{
+    public static Variant GetOrDefault(this Godot.Collections.Dictionary dict, Variant key, Variant defaultValue)
+    {
+        return dict.ContainsKey(key) ? dict[key] : defaultValue;
+    }
+    public static Godot.Collections.Dictionary<TKey, TValue> AsGodotDictionary<TKey, TValue>(this Variant variant)
+    {
+        if (variant.VariantType == Variant.Type.Dictionary)
+        {
+            var godotDict = variant.AsGodotDictionary();
+            var result = new Godot.Collections.Dictionary<TKey, TValue>();
+            foreach (var key in godotDict.Keys)
+            {
+                if (key.Obj is TKey tKey && godotDict[key].Obj is TValue tValue) // This casting is tricky
+                {
+                    result.Add(tKey, tValue);
+                } else if (key.VariantType == Variant.Type.String && typeof(TKey) == typeof(string) &&
+                           godotDict[key].VariantType == Variant.Type.String && typeof(TValue) == typeof(string))
+                {
+                     result.Add((TKey)(object)key.ToString(), (TValue)(object)godotDict[key].ToString());
+                }
+            }
+            return result; // This generic conversion is complex with Variant.
+                           // For string,string it's simpler. For other types, more robust conversion needed.
+                           // The current implementation will likely only work for string,string.
+        }
+        return new Godot.Collections.Dictionary<TKey, TValue>();
+    }
+}

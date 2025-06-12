@@ -4,8 +4,11 @@
 [ext_resource type="Script" path="res://ChatLog.cs" id="2_xyz78"] # This was missing in the previous diff's SEARCH but present in file
 [ext_resource type="Script" path="res://CombatTracker.cs" id="3_ghjkl")]
 [ext_resource type="Script" path="res://DrawingOverlay.cs" id="4_abc12")]
+[ext_resource type="PackedScene" uid="uid://fogwar123abc" path="res://FogOfWarScene.tscn" id="5_def45")]
+[ext_resource type="PackedScene" uid="uid://handout_disp_123" path="res://HandoutDisplay.tscn" id="6_xyz78")]
+[ext_resource type="PackedScene" uid="uid://decks_panel_scene" path="res://DecksPanel.tscn" id="7_decks_panel")]
 
-[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton")]
+[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog")]
 script = ExtResource("1_abcde")
 chatLogNode = NodePath("ChatUIContainer/ChatDisplay")
 chatMessageInput = NodePath("ChatUIContainer/ChatMessageInput")
@@ -129,3 +132,152 @@ text = "Clear Drawings"
 [node name="ToggleMeasureModeButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
 layout_mode = 2
 text = "Measure: OFF"
+
+[node name="ShareHandoutButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Share Handout"
+
+[node name="ToggleNotesButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Notes"
+
+[node name="ToggleDecksPanelButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Decks"
+
+[node name="ToggleMusicButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Music: Play"
+
+[node name="ToggleMacroPanelButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"]
+layout_mode = 2
+text = "Macros"
+
+[node name="HBoxSaveLoad" type="HBoxContainer" parent="CombatTrackerPanel/VBoxContainer"] # New HBox for Save/Load
+layout_mode = 2
+alignment = 1 # Center
+
+[node name="SaveCampaignButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/HBoxSaveLoad"]
+layout_mode = 2
+text = "Save Campaign"
+
+[node name="LoadCampaignButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/HBoxSaveLoad"]
+layout_mode = 2
+text = "Load Campaign"
+
+[node name="GlobalFog" parent="." instance=ExtResource("5_def45")]
+
+[node name="Walls" type="Node2D" parent="."] # Container for wall objects
+z_index = 0 # Ensure walls are rendered appropriately relative to map/tokens
+
+[node name="Wall1" type="StaticBody2D" parent="Walls"]
+position = Vector2(300, 200)
+collision_layer = 2 # Obstacles on layer 2
+collision_mask = 1  # Can interact with layer 1 (Tokens), or 0 if nothing queries them
+
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_wall1"]
+polygon = PackedVector2Array(-100, -20, 100, -20, 100, 20, -100, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Wall1"]
+shape = SubResource("RectangleShape2D_wall1_col") # Will define this below
+
+[node name="LightOccluder2D" type="LightOccluder2D" parent="Walls/Wall1"]
+occluder = SubResource("OccluderPolygon2D_wall1")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall1_col"]
+size = Vector2(200, 40)
+
+
+[node name="Wall2" type="StaticBody2D" parent="Walls"]
+position = Vector2(600, 400)
+rotation = 0.785398 # 45 degrees
+collision_layer = 2 # Obstacles on layer 2
+collision_mask = 1  # Can interact with layer 1 (Tokens), or 0
+
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_wall2"]
+polygon = PackedVector2Array(-150, -25, 150, -25, 150, 25, -150, 25)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Walls/Wall2"]
+shape = SubResource("RectangleShape2D_wall2_col") # Will define this below
+
+[node name="LightOccluder2D" type="LightOccluder2D" parent="Walls/Wall2"]
+occluder = SubResource("OccluderPolygon2D_wall2")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall2_col"]
+size = Vector2(300, 50)
+
+[node name="HandoutImageFileDialog" type="FileDialog" parent="."]
+title = "Select Handout Image"
+initial_position = 2 # Center
+access = 2 # FileSystem
+filters = PackedStringArray("*.png ; PNG Images", "*.jpg ; JPG Images", "*.jpeg ; JPEG Images", "*.webp ; WebP Images")
+root_subfolder = "assets/handouts"
+visible = false
+
+[node name="NotesPanel" type="PanelContainer" parent="."]
+anchors_preset = 8 # Center
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -150.0
+offset_right = 200.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+custom_minimum_size = Vector2(300, 200)
+visible = false
+
+[node name="NotesTextEdit" type="TextEdit" parent="NotesPanel"]
+layout_mode = 2 # Fill PanelContainer
+size_flags_horizontal = 3 # ExpandFill
+size_flags_vertical = 3   # ExpandFill
+wrap_mode = 1 # TextEdit.LineWrapperMode.Boundary
+placeholder_text = "Enter your notes here..."
+
+[node name="DecksPanel" parent="." instance=ExtResource("7_decks_panel")]
+visible = false # Initially hidden
+
+[node name="MacroPanel" type="PanelContainer" parent="."]
+anchors_preset = 8 # Center
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -180.0
+offset_right = 250.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+custom_minimum_size = Vector2(400, 300)
+visible = false
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MacroPanel"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MacroPanel/VBoxContainer"]
+layout_mode = 2
+text = "Macro Input (one command per line, e.g., CHAT \"Msg\" or ROLL 1d20)"
+horizontal_alignment = 1
+autowrap_mode = 2 # Word (Smart)
+
+[node name="MacroInputTextEdit" type="TextEdit" parent="MacroPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3 # ExpandFill
+placeholder_text = "CHAT \"Hello world\"\nROLL 2d6+3\n# This is a comment"
+wrap_mode = 1 # Boundary
+
+[node name="RunMacroButton" type="Button" parent="MacroPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4 # Center
+text = "Run Macro"
+
+[node name="CampaignFileDialog" type="FileDialog" parent="."]
+title = "Save/Load Campaign"
+initial_position = 2 # Center
+access = 2 # FileSystem
+# Filters will be set by code depending on save/load mode
+# root_subfolder = "user://" # Default to user directory for saves
+visible = false

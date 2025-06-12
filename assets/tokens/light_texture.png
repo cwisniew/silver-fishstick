@@ -1,0 +1,5 @@
+This is a placeholder for a 128x128 PNG image.
+It should represent a soft circular light source.
+Ideally, it's a white circle in the center, smoothly fading to fully transparent at the edges,
+on a fully transparent background (or black, if transparency is an issue for the Light2D texture slot, though transparent is usually preferred).
+This texture will be used by the Light2D node on tokens for their vision range.

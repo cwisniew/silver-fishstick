@@ -1,13 +1,38 @@
 [gd_scene load_steps=3 format=3 uid="uid://b1x2y3z4a5b6"]
 
 [ext_resource type="Script" path="res://Token.cs" id="1_xyz12"]
+# Note: The texture path for VisionLight might need its own ExtResource if not already handled by Godot's loader.
+# For simplicity, assuming "res://assets/tokens/light_texture.png" is loaded directly if it's a built-in string field.
+# If it's an actual resource link in the editor, it would have its own ExtResource id.
+# The previous read_files didn't show an ExtResource for light_texture.png, so direct path is assumed.
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_abcde"]
-size = Vector2(128, 128)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"] # Renamed for clarity
+size = Vector2(128, 128) # Default size, can be adjusted
 
-[node name="TokenSprite" type="Sprite2D" script="res://Token.cs"]
-texture_filter = 1 # Prevent blurry sprites
+[node name="TokenBody" type="CharacterBody2D"]
+collision_layer = 1 # Tokens on layer 1
+collision_mask = 2  # Interact with layer 2 (Obstacles)
 script = ExtResource("1_xyz12")
+# CharacterBody2D properties like motion_mode can be set here if needed (e.g., Grounded)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_abcde")
+[node name="TokenSpriteVisuals" type="Sprite2D" parent="."] # Renamed from TokenSprite
+texture_filter = 1 # Prevent blurry sprites
+# The actual texture will be set by Token.cs's TokenTexture property
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."] # For physics and A* obstacle detection for other tokens potentially
+shape = SubResource("RectangleShape2D_collision")
+
+[node name="InputCollisionShape2D" type="CollisionShape2D" parent="."] # Separate shape for mouse input if needed, or reuse main one
+shape = SubResource("RectangleShape2D_collision") # Reusing same shape for input for now
+# This InputCollisionShape2D's input_pickable should be true (default for CollisionShape2D)
+
+[node name="VisionLight" type="Light2D" parent="."]
+texture = ResourceLoader.load("res://assets/tokens/light_texture.png") # Explicitly load if not an ExtResource
+texture_scale = Vector2(1, 1) # Controlled by Token.cs
+color = Color(1, 1, 1, 1)
+energy = 1.0
+shadow_enabled = true
+shadow_color = Color(0, 0, 0, 0.85)
+# Ensure VisionLight is drawn correctly relative to TokenSpriteVisuals,
+# typically VisionLight might be a child of TokenSpriteVisuals or have similar Z ordering.
+# For now, keeping as sibling.

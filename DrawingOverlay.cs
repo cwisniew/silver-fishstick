@@ -151,4 +151,62 @@ public partial class DrawingOverlay : Node2D
 		_tempMeasureEnd = Vector2.Zero;
 		QueueRedraw();
 	}
+
+	public Godot.Collections.Array<DrawingLineData> GetDrawingData()
+	{
+		var drawingData = new Godot.Collections.Array<DrawingLineData>();
+		foreach (var linePointsList in _allLines)
+		{
+			if (linePointsList == null || linePointsList.Count < 2) continue;
+
+			var lineData = new DrawingLineData
+			{
+				Points = new List<Vector2Data>(),
+				// Assuming all persistent lines currently use CurrentDrawColor and LineThickness
+				// This is a simplification. If lines could have individual colors/thicknesses,
+				// that data would need to be stored with each line in _allLines.
+				LineColor = new ColorData(this.CurrentDrawColor),
+				Thickness = this.LineThickness
+			};
+			foreach (Vector2 point in linePointsList)
+			{
+				lineData.Points.Add(new Vector2Data(point)); // Assuming point is already local
+			}
+			drawingData.Add(lineData);
+		}
+		return drawingData;
+	}
+
+	public void ApplyDrawingData(List<DrawingLineData> drawingDataList)
+	{
+		ClearDrawings(); // Clear existing drawings first
+		if (drawingDataList == null) return;
+
+		foreach (var lineData in drawingDataList)
+		{
+			if (lineData.Points == null || lineData.Points.Count < 2) continue;
+
+			var points = new List<Vector2>();
+			foreach (Vector2Data pointData in lineData.Points)
+			{
+				points.Add(pointData.ToVector2()); // Assuming points are saved as local
+			}
+
+			// This simplistic application assumes all loaded lines will take on the *current*
+			// DrawColor and LineThickness of the DrawingOverlay, as the DTO stores it per line
+			// but _allLines doesn't store color/thickness per line.
+			// For true per-line property restoration, _allLines would need to store objects
+			// containing points, color, and thickness.
+			// For now, we add the points, and they will be drawn with current settings.
+			// Or, if we want to restore color/thickness, we'd have to change how _allLines and _Draw work.
+			// Let's assume for this step, we restore points and they get current default color/thickness.
+			// A better approach would be to store line properties with each line.
+			// For now: Add points to _allLines, and they will be drawn with the overlay's current default style.
+			// This means loaded drawings might not look identical if the CurrentDrawColor changed.
+			// This is a limitation of the current DrawingOverlay structure.
+			_allLines.Add(points);
+		}
+		QueueRedraw();
+		GD.Print("Drawing data applied.");
+	}
 }
