@@ -12,7 +12,8 @@ public partial class LayersPanelController : PanelContainer
 	private TileDrawer tileDrawer;
 	private int currentlySelectedLayerIndexInUI = -1;
 	private List<Button> selectLayerButtons = new List<Button>();
-	private UndoRedoManager undoRedoManager; // Added
+	private UndoRedoManager undoRedoManager;
+	private AssetManager assetManagerInstance; // Added for RemoveLayerAction
 
 	public override void _Ready()
 	{
@@ -41,7 +42,27 @@ public partial class LayersPanelController : PanelContainer
 		tileDrawer = GetNode<TileDrawer>("/root/MainScene/TileMap");
 		if (tileDrawer == null) {
 			GD.PrintErr("LayersPanelController: TileDrawer node (expected at /root/MainScene/TileMap) not found! Panel will be disabled.");
-			addLayerButton.Disabled = true;
+			if(addLayerButton != null) addLayerButton.Disabled = true;
+			if(removeLayerButton != null) removeLayerButton.Disabled = true;
+			return;
+		}
+
+		// Get AssetManager instance
+		assetManagerInstance = GetNode<AssetManager>("/root/AssetManager");
+		if (assetManagerInstance == null)
+		{
+			GD.PrintErr("LayersPanelController: AssetManager not found! Some actions like RemoveLayer might fail on Undo.");
+			// Not disabling buttons, as AddLayer might still work, but RemoveLayer's Undo will be broken.
+		}
+
+		if (layerEntryScene == null) {
+			GD.PrintErr("LayersPanelController: LayerEntryScene not packed/assigned in Inspector! UI will be minimal.");
+		}
+
+		if(addLayerButton != null) addLayerButton.Pressed += _OnAddLayerButtonPressed;
+		if(removeLayerButton != null) removeLayerButton.Pressed += _OnRemoveLayerButtonPressed;
+
+		RefreshLayerList();
 			removeLayerButton.Disabled = true;
 			return;
 		}
@@ -228,41 +249,176 @@ public partial class LayersPanelController : PanelContainer
 
 	private void _OnAddLayerButtonPressed()
 	{
-		if (tileDrawer != null)
+		if (tileDrawer == null || undoRedoManager == null)
 		{
-			tileDrawer.AddLayer(-1);
-			int newLayerIndex = tileDrawer.GetLayersCount() - 1;
-			tileDrawer.SetLayerName(newLayerIndex, $"Layer {newLayerIndex}");
-			RefreshLayerList();
-			SelectLayerInUI(newLayerIndex, true);
-			// GD.Print($"Added new layer: {newLayerIndex}");
+			GD.PrintErr("LayersPanelController: TileDrawer or UndoRedoManager not available for AddLayer action.");
+			// Fallback to direct add if undo manager is missing (though this state should be avoided)
+			if (tileDrawer != null && undoRedoManager == null) {
+				 GD.Print("LayersPanelController: Performing direct layer add (UndoRedoManager not found).");
+				 tileDrawer.AddLayer(-1);
+				 int newLayerIndexFallback = tileDrawer.GetLayersCount() - 1;
+				 tileDrawer.SetLayerName(newLayerIndexFallback, $"Layer {newLayerIndexFallback}");
+				 tileDrawer.SetLayerZIndex(newLayerIndexFallback, newLayerIndexFallback);
+				 tileDrawer.SetCurrentDrawingLayer(newLayerIndexFallback);
+				 RefreshLayerList(); // Manual refresh needed as HistoryChanged won't fire
+			}
+			return;
 		}
+
+		// Determine default properties for the new layer
+		int newLayerPotentialIndex = tileDrawer.GetLayersCount(); // Index it *will* have if added to end
+		string defaultNewLayerName = $"Layer {newLayerPotentialIndex}";
+		// A common practice for Z-index might be new layers on top,
+		// which could be layersCount or a specific scheme.
+		// TileMap layers' Z-indices default to their layer index if not set.
+		// Let AddLayerAction handle default Z if not specified, or specify one here.
+		// For now, let's use the layer's own index as its Z-index as a default.
+		int defaultZIndex = newLayerPotentialIndex;
+
+		AddLayerAction action = new AddLayerAction(defaultNewLayerName, defaultZIndex);
+
+		action.Execute(tileDrawer); // Execute the action
+		undoRedoManager.RecordAction(action); // Record it
+
+		// GD.Print($"AddLayerAction recorded for new layer '{defaultNewLayerName}'. UI will refresh via HistoryChanged.");
+		// No explicit RefreshLayerList() or SelectLayerInUI() call needed here.
+		// AddLayerAction.Execute sets CurrentDrawingLayer in TileDrawer.
+		// UndoRedoManager.RecordAction emits HistoryChanged.
+		// LayersPanelController._OnHistoryChanged (connected in _Ready or by MainScene) calls RefreshLayerList.
+		// RefreshLayerList uses tileDrawer.CurrentDrawingLayer to highlight the selected layer.
 	}
 
 	private void _OnRemoveLayerButtonPressed()
 	{
-		if (tileDrawer != null && tileDrawer.GetLayersCount() > 1 &&
-			currentlySelectedLayerIndexInUI >= 0 && currentlySelectedLayerIndexInUI < tileDrawer.GetLayersCount())
+		if (tileDrawer == null || undoRedoManager == null || assetManagerInstance == null)
 		{
-			int layerToRemove = currentlySelectedLayerIndexInUI;
-			// GD.Print($"Removing layer: {layerToRemove}");
-			tileDrawer.RemoveLayer(layerToRemove);
-
-			int newLayerToSelect = Mathf.Max(0, layerToRemove - 1);
-			if (tileDrawer.GetLayersCount() == 0) { // Should be caught by > 1 check but defensive
-				// This state should not be reached if removeLayerButton.Disabled correctly managed
-			} else if (newLayerToSelect >= tileDrawer.GetLayersCount()) { // If last item was removed
-				newLayerToSelect = tileDrawer.GetLayersCount() - 1;
+			GD.PrintErr("LayersPanelController: Dependencies (TileDrawer, UndoRedoManager, or AssetManager) not available for RemoveLayer action.");
+			// Fallback direct removal if undo/asset manager is missing, but this is risky for object restoration
+			if (tileDrawer != null && tileDrawer.GetLayersCount() > 1 &&
+				currentlySelectedLayerIndexInUI >= 0 && currentlySelectedLayerIndexInUI < tileDrawer.GetLayersCount() &&
+				(undoRedoManager == null || assetManagerInstance == null) )
+			{
+				GD.Print("LayersPanelController: Performing direct layer removal (UndoRedoManager or AssetManager missing). Object restoration on undo will fail.");
+				int layerToRemoveFallback = currentlySelectedLayerIndexInUI;
+				tileDrawer.RemoveLayer(layerToRemoveFallback);
+				int newLayerToSelectFallback = Mathf.Max(0, layerToRemoveFallback - 1);
+				if (tileDrawer.GetLayersCount() > 0) { // Ensure there's a layer to select
+					if (newLayerToSelectFallback >= tileDrawer.GetLayersCount()) newLayerToSelectFallback = tileDrawer.GetLayersCount() - 1;
+					SelectLayerInUI(newLayerToSelectFallback, true); // Update selection in TileDrawer
+				}
+				RefreshLayerList(); // Manual refresh
 			}
+			return;
+		}
 
-			RefreshLayerList();
-			if (tileDrawer.GetLayersCount() > 0) {
-				SelectLayerInUI(newLayerToSelect, true);
+		if (tileDrawer.GetLayersCount() <= 1)
+		{
+			GD.Print("LayersPanelController: Cannot remove the last layer.");
+			// removeLayerButton.Disabled should be true via RefreshLayerList, this is an extra safeguard.
+			return;
+		}
+
+		if (!IsValidLayerIndex(currentlySelectedLayerIndexInUI)) // Check using IsValidLayerIndex
+		{
+			GD.PrintErr($"LayersPanelController: No valid layer selected to remove (selected index: {currentlySelectedLayerIndexInUI}).");
+			return;
+		}
+
+		int layerIndexToRemove = currentlySelectedLayerIndexInUI;
+
+		NodePath placedObjectsRootPath = "/root/MainScene/PlacedObjectsRoot";
+		string placedObjectScenePath = TileDrawer.PlacedObjectScenePath;
+
+		RemoveLayerAction action = new RemoveLayerAction(
+			layerIndexToRemove,
+			tileDrawer,
+			placedObjectsRootPath,
+			assetManagerInstance,
+			placedObjectScenePath
+		);
+
+		action.Execute(tileDrawer);
+		undoRedoManager.RecordAction(action);
+
+		// GD.Print($"RemoveLayerAction recorded for layer index {layerIndexToRemove}. UI will refresh via HistoryChanged.");
+		// UI Refresh is handled by _OnHistoryChanged, triggered by RecordAction.
+		// RemoveLayerAction.Execute updates CurrentDrawingLayer in TileDrawer.
+		// RefreshLayerList (called by _OnHistoryChanged) will highlight the new CurrentDrawingLayer.
+	}
+
+	private void _OnLayerNameSubmitted(string newName, int layerIndex)
+	{
+		if (tileDrawer == null)
+		{
+			GD.PrintErr("LayersPanelController: TileDrawer is null, cannot rename layer.");
+			return;
+		}
+		if (layerIndex < 0 || layerIndex >= tileDrawer.GetLayersCount())
+		{
+			GD.PrintErr($"LayersPanelController: Invalid layer index {layerIndex} for renaming.");
+			return;
+		}
+
+		string trimmedNewName = newName.Trim();
+		string oldName = tileDrawer.GetLayerName(layerIndex); // Get old name before any changes
+
+		if (string.IsNullOrEmpty(trimmedNewName))
+		{
+			GD.Print("Layer name cannot be empty. Reverting.");
+			if (layerIndex < layerListContainer.GetChildCount())
+			{
+				var layerEntryNode = layerListContainer.GetChild(layerIndex);
+				var nameEdit = layerEntryNode?.GetNode<LineEdit>("HBoxContainer/LayerNameLineEdit");
+				if (nameEdit != null) nameEdit.Text = oldName ?? $"Layer {layerIndex}";
 			}
+			return;
+		}
+
+		if (oldName == trimmedNewName) return;
+
+		if (undoRedoManager != null)
+		{
+			SetLayerNameAction nameAction = new SetLayerNameAction(layerIndex, oldName, trimmedNewName); // Renamed 'action' to 'nameAction'
+			nameAction.Execute(tileDrawer);
+			undoRedoManager.RecordAction(nameAction);
+			GD.Print($"Layer {layerIndex} renamed from '{oldName}' to '{trimmedNewName}' (Undoable).");
 		}
 		else
 		{
-			GD.Print("Cannot remove layer. Select a layer to remove, or it's the last layer.");
+			tileDrawer.SetLayerName(layerIndex, trimmedNewName);
+			GD.PrintErr("UndoRedoManager not found. Layer rename not undoable.");
+		}
+	}
+
+	private void _OnLayerZIndexChanged(double newValue, int layerIndex)
+	{
+		if (tileDrawer == null)
+		{
+			GD.PrintErr("LayersPanelController: TileDrawer is null, cannot change Z-index.");
+			return;
+		}
+		if (layerIndex < 0 || layerIndex >= tileDrawer.GetLayersCount())
+		{
+			GD.PrintErr($"LayersPanelController: Invalid layer index {layerIndex} for Z-index change.");
+			return;
+		}
+
+		int newZIndex = (int)newValue;
+		int oldZIndex = tileDrawer.GetLayerZIndex(layerIndex);
+
+		if (oldZIndex == newZIndex) return;
+
+		if (undoRedoManager != null)
+		{
+			SetLayerZIndexAction zIndexAction = new SetLayerZIndexAction(layerIndex, oldZIndex, newZIndex);
+			zIndexAction.Execute(tileDrawer);
+			undoRedoManager.RecordAction(zIndexAction);
+			GD.Print($"Layer {layerIndex} Z-index changed from {oldZIndex} to {newZIndex} (Undoable).");
+		}
+		else
+		{
+			tileDrawer.SetLayerZIndex(layerIndex, newZIndex); // Fallback
+			GD.PrintErr("UndoRedoManager not found. Layer Z-index change not undoable.");
 		}
 	}
 
@@ -362,38 +518,22 @@ public partial class LayersPanelController : PanelContainer
 
 		if (undoRedoManager != null)
 		{
-			MoveLayerAction action = new MoveLayerAction(layerIndex, targetVisualIndex);
-			action.Execute(tileDrawer); // This changes the TileMap state
+			MoveLayerAction action = new MoveLayerAction(layerIndex, targetVisualIndex, tileDrawer); // Pass tileDrawer
+			action.Execute(tileDrawer);
 			undoRedoManager.RecordAction(action);
-			// GD.Print($"MoveLayerAction recorded: Layer {layerIndex} ('{originalLayerName}') moved to {targetVisualIndex}.");
+			// CurrentDrawingLayer is now handled by MoveLayerAction.Execute
 		}
 		else
 		{
 			GD.PrintErr("UndoRedoManager not found. Layer move not undoable.");
 			tileDrawer.MoveLayer(layerIndex, targetVisualIndex); // Fallback direct call
+			// Manual selection needed for fallback
+			if (activeLayerNameBeforeMove != null) { /* Simplified: just refresh, selection might be off */ }
+			else if (tileDrawer.GetLayersCount() > 0) { tileDrawer.SetCurrentDrawingLayer(0); }
 		}
 
-		// After TileMap state is changed, find the original active layer by name to restore selection
-		if (activeLayerNameBeforeMove != null)
-		{
-			int newIndexOfOriginalActiveLayer = -1;
-			for(int i=0; i < tileDrawer.GetLayersCount(); ++i) {
-				if (tileDrawer.GetLayerName(i) == activeLayerNameBeforeMove) {
-					newIndexOfOriginalActiveLayer = i;
-					break;
-				}
-			}
-			if (newIndexOfOriginalActiveLayer != -1 && IsValidLayerIndex(newIndexOfOriginalActiveLayer)) {
-				 tileDrawer.SetCurrentDrawingLayer(newIndexOfOriginalActiveLayer);
-			} else if (tileDrawer.GetLayersCount() > 0) { // Fallback if name not found or invalid
-				tileDrawer.SetCurrentDrawingLayer(0);
-			}
-		} else if (tileDrawer.GetLayersCount() > 0) { // If no prior active layer or name was null
-			tileDrawer.SetCurrentDrawingLayer(0);
-		}
-
-
-		RefreshLayerList(); // Refresh UI. It uses tileDrawer.CurrentDrawingLayer to highlight.
+		// RefreshLayerList will use the CurrentDrawingLayer set by the action (or fallback)
+		RefreshLayerList();
 	}
 
 	private void _OnMoveLayerDownPressed(int layerIndex)
@@ -414,35 +554,21 @@ public partial class LayersPanelController : PanelContainer
 
 		if (undoRedoManager != null)
 		{
-			MoveLayerAction action = new MoveLayerAction(layerIndex, targetVisualIndex);
+			MoveLayerAction action = new MoveLayerAction(layerIndex, targetVisualIndex, tileDrawer); // Pass tileDrawer
 			action.Execute(tileDrawer);
 			undoRedoManager.RecordAction(action);
-			// GD.Print($"MoveLayerAction recorded: Layer {layerIndex} ('{originalLayerName}') moved to {targetVisualIndex}.");
+			// CurrentDrawingLayer is now handled by MoveLayerAction.Execute
 		}
 		else
 		{
 			GD.PrintErr("UndoRedoManager not found. Layer move not undoable.");
 			tileDrawer.MoveLayer(layerIndex, targetVisualIndex); // Fallback
+			// Manual selection needed for fallback
+			if (activeLayerNameBeforeMove != null) { /* Simplified: just refresh, selection might be off */ }
+			else if (tileDrawer.GetLayersCount() > 0) { tileDrawer.SetCurrentDrawingLayer(0); }
 		}
 
-		if (activeLayerNameBeforeMove != null)
-		{
-			int newIndexOfOriginalActiveLayer = -1;
-			for(int i=0; i < tileDrawer.GetLayersCount(); ++i) {
-				if (tileDrawer.GetLayerName(i) == activeLayerNameBeforeMove) {
-					newIndexOfOriginalActiveLayer = i;
-					break;
-				}
-			}
-			if (newIndexOfOriginalActiveLayer != -1 && IsValidLayerIndex(newIndexOfOriginalActiveLayer)) {
-				 tileDrawer.SetCurrentDrawingLayer(newIndexOfOriginalActiveLayer);
-			} else if (tileDrawer.GetLayersCount() > 0) {
-				tileDrawer.SetCurrentDrawingLayer(0);
-			}
-		} else if (tileDrawer.GetLayersCount() > 0) {
-			tileDrawer.SetCurrentDrawingLayer(0);
-		}
-
+		// RefreshLayerList will use the CurrentDrawingLayer set by the action (or fallback)
 		RefreshLayerList();
 	}
 

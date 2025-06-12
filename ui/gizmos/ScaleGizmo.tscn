@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://dgwk7qoq7v1s3"]
+
+[ext_resource type="Script" path="res://ui/gizmos/ScaleGizmo.cs" id="1_scale_gizmo_script"]
+
+[node name="ScaleGizmo" type="Node2D"]
+visible = false
+z_index = 4001 # Slightly above rotation gizmo if both could be visible
+script = ExtResource("1_scale_gizmo_script")
+
+[node name="TopLeftHandleArea" type="Area2D" parent="."]
+# CollisionLayer/Mask set by script
+
+    [node name="HandleSprite" type="Sprite2D" parent="TopLeftHandleArea"]
+    centered = true
+    # Texture and CollisionShape set by script
+
+    [node name="HandleCollision" type="CollisionShape2D" parent="TopLeftHandleArea"]
+    # Shape set by script
+
+[node name="TopRightHandleArea" type="Area2D" parent="."]
+
+    [node name="HandleSprite" type="Sprite2D" parent="TopRightHandleArea"]
+    centered = true
+
+    [node name="HandleCollision" type="CollisionShape2D" parent="TopRightHandleArea"]
+
+[node name="BottomLeftHandleArea" type="Area2D" parent="."]
+
+    [node name="HandleSprite" type="Sprite2D" parent="BottomLeftHandleArea"]
+    centered = true
+
+    [node name="HandleCollision" type="CollisionShape2D" parent="BottomLeftHandleArea"]
+
+[node name="BottomRightHandleArea" type="Area2D" parent="."]
+
+    [node name="HandleSprite" type="Sprite2D" parent="BottomRightHandleArea"]
+    centered = true
+
+    [node name="HandleCollision" type="CollisionShape2D" parent="BottomRightHandleArea"]
+
+# Example for side handles (if implementing 8-way scaling)
+# [node name="LeftHandleArea" type="Area2D" parent="."]
+# [node name="HandleSprite" type="Sprite2D" parent="LeftHandleArea"]
+# [node name="HandleCollision" type="CollisionShape2D" parent="LeftHandleArea"]
+# ... etc. for Right, Top, Bottom ...

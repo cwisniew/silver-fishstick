@@ -414,4 +414,134 @@ public partial class AssetManager : Node
 		// GD.PrintErr($"AssetManager: Asset not found for SourceID {sourceIdInMasterSet} and AtlasCoords {atlasCoordsInSource} in MasterTileSet.");
 		return null;
 	}
+
+	public bool DeleteGlobalAsset(AssetData assetDataToDelete)
+	{
+		if (assetDataToDelete == null)
+		{
+			GD.PrintErr("DeleteGlobalAsset: assetDataToDelete is null.");
+			return false;
+		}
+
+		if (assetDataToDelete.Name == "Eraser" && string.IsNullOrEmpty(assetDataToDelete.OriginalImageFilePath)) {
+			GD.PrintWarn("DeleteGlobalAsset: Attempted to delete the virtual Eraser asset. Operation skipped.");
+			return true;
+		}
+
+		if (globalSettings == null) {
+			GD.PrintErr("DeleteGlobalAsset: GlobalSettings not available.");
+			return false;
+		}
+		string globalRoot = globalSettings.GetGlobalAssetPath();
+		if (string.IsNullOrEmpty(globalRoot)) {
+			GD.PrintErr("DeleteGlobalAsset: Global asset root path is not configured.");
+			return false;
+		}
+
+		(string imagePath, string metadataPath, string tileSetTresPath) =
+			GetGlobalFilePathsForAssetDeletion(assetDataToDelete, globalRoot);
+
+		bool allDeletionsSuccessful = true;
+		// bool anyFileExisted = false; // Not strictly needed for return logic but useful for more nuanced feedback
+
+		// Delete Image File
+		if (!string.IsNullOrEmpty(imagePath))
+		{
+			if (FileAccess.FileExists(imagePath))
+			{
+				// anyFileExisted = true;
+				Error err = DirAccess.RemoveAbsolute(imagePath);
+				if (err == Error.Ok)
+				{
+					GD.Print($"Successfully deleted image file: {imagePath}");
+				}
+				else
+				{
+					GD.PrintErr($"Failed to delete image file: {imagePath}. Error: {err}");
+					allDeletionsSuccessful = false;
+				}
+			}
+			else { GD.Print($"DeleteGlobalAsset: Image file not found, skipping: {imagePath}"); }
+		} else {
+			GD.PrintWarn($"DeleteGlobalAsset: Image path was null or empty for {assetDataToDelete.Name}, cannot delete image. This implies invalid AssetData.");
+			allDeletionsSuccessful = false;
+		}
+
+		// Delete Metadata File
+		if (!string.IsNullOrEmpty(metadataPath))
+		{
+			if (FileAccess.FileExists(metadataPath))
+			{
+				// anyFileExisted = true;
+				Error err = DirAccess.RemoveAbsolute(metadataPath);
+				if (err == Error.Ok)
+				{
+					GD.Print($"Successfully deleted metadata file: {metadataPath}");
+				}
+				else
+				{
+					GD.PrintErr($"Failed to delete metadata file: {metadataPath}. Error: {err}");
+					allDeletionsSuccessful = false;
+				}
+			}
+			else { GD.Print($"DeleteGlobalAsset: Metadata file not found, skipping: {metadataPath}"); }
+		} else {
+			GD.PrintWarn($"DeleteGlobalAsset: Metadata path was null or empty for {assetDataToDelete.Name}, cannot delete metadata. This implies invalid AssetData.");
+			allDeletionsSuccessful = false;
+		}
+
+		// Delete TileSet .tres File (if it exists)
+		if (!string.IsNullOrEmpty(tileSetTresPath))
+		{
+			if (FileAccess.FileExists(tileSetTresPath))
+			{
+				// anyFileExisted = true;
+				Error err = DirAccess.RemoveAbsolute(tileSetTresPath);
+				if (err == Error.Ok)
+				{
+					GD.Print($"Successfully deleted TileSet .tres file: {tileSetTresPath}");
+				}
+				else
+				{
+					GD.PrintErr($"Failed to delete TileSet .tres file: {tileSetTresPath}. Error: {err}");
+					allDeletionsSuccessful = false;
+				}
+			}
+			else { GD.Print($"DeleteGlobalAsset: TileSet .tres file not found, skipping: {tileSetTresPath}"); }
+		}
+		// If tileSetTresPath was null (not a spritesheet asset), it's not an error, so allDeletionsSuccessful remains unchanged.
+
+		return allDeletionsSuccessful;
+	}
+
+	private (string imagePath, string metadataPath, string tileSetTresPath) GetGlobalFilePathsForAssetDeletion(AssetData assetData, string globalAssetRootPath)
+	{
+		if (assetData == null || string.IsNullOrEmpty(assetData.OriginalImageFilePath))
+		{
+			GD.PrintErr($"GetGlobalFilePathsForAssetDeletion: AssetData is null or has no OriginalImageFilePath. Cannot determine file paths for asset: {assetData?.Name}");
+			return (null, null, null);
+		}
+
+		// assetData.OriginalImageFilePath is stored relative to globalAssetRootPath, e.g., "images/MySheet.png"
+		string imageFileNameWithExt = System.IO.Path.GetFileName(assetData.OriginalImageFilePath);
+		string baseName = System.IO.Path.GetFileNameWithoutExtension(imageFileNameWithExt);
+
+		if (string.IsNullOrEmpty(baseName))
+		{
+			GD.PrintErr($"GetGlobalFilePathsForAssetDeletion: Could not determine base name from OriginalImageFilePath: {assetData.OriginalImageFilePath} for asset: {assetData.Name}");
+			return (null, null, null);
+		}
+
+		string imagePath = globalAssetRootPath.PlusFile(assetData.OriginalImageFilePath);
+		string metadataPath = globalAssetRootPath.PlusFile("metadata").PlusFile(baseName + ".json");
+
+		string tileSetTresPath = null;
+		// assetData.TileSetResourcePath is stored relative to globalAssetRootPath, e.g., "tilesets/MySheet.tres"
+		if (!string.IsNullOrEmpty(assetData.TileSetResourcePath))
+		{
+			tileSetTresPath = globalAssetRootPath.PlusFile(assetData.TileSetResourcePath);
+		}
+
+		return (imagePath, metadataPath, tileSetTresPath);
+	}
 }

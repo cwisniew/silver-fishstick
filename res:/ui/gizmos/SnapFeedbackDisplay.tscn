@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://dplgxqgrt8c8y"]
+
+[ext_resource type="Script" path="res://ui/gizmos/SnapFeedbackDisplay.cs" id="1_snap_cs"]
+
+[node name="SnapFeedbackDisplay" type="Node2D"]
+z_index = 50
+script = ExtResource("1_snap_cs")
+# ProcessMode is Inherit by default, so not explicitly set.
+# Visible is true by default.

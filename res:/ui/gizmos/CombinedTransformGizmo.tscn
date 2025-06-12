@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://bcycvx0x0qvqf"]
+
+[ext_resource type="Script" path="res://ui/gizmos/CombinedTransformGizmo.cs" id="1_ct_gizmo_cs"]
+
+[node name="CombinedTransformGizmo" type="Node2D"]
+visible = false
+z_index = 4002
+process_mode = 1 # PROCESS_MODE_ALWAYS
+script = ExtResource("1_ct_gizmo_cs")

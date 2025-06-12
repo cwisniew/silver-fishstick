@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://Scripts/Core/MapCameraController.cs" id="5_cam_ctrl"]
 [ext_resource type="PackedScene" uid="uid://b0wcnkbrq1xnm" path="res://ui/LayersPanel.tscn" id="6_layers_panel_scene"]
 [ext_resource type="PackedScene" uid="uid://b8jqwcn0wqk7x" path="res://ui/ObjectPropertiesPanel.tscn" id="7_obj_props_panel"]
+[ext_resource type="Script" path="res://Scripts/UI/GridDisplay.cs" id="8_grid_display_cs"]
 
 
 [node name="MainScene" type="Control"]
@@ -77,6 +78,26 @@ position = Vector2(0, 0) # Default position
 [node name="ObjectPropertiesPanelInstance" parent="." instance=ExtResource("7_obj_props_panel")]
 # Visibility is false by default in its own scene.
 # Layout (anchored right, width 250) is also set in its own scene.
+
+[node name="AppSettingsPanelInstance" type="PanelContainer" parent="."]
+# This is a placeholder that will be replaced by the actual scene instance in MainScene.cs _Ready()
+visible = false
+layout_mode = 1
+anchors_preset = 8 # Center
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -225.0 # Half of default AppSettingsPanel width (450/2)
+offset_top = -110.0  # Half of default AppSettingsPanel height (220/2)
+offset_right = 225.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GridDisplayNode" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("8_grid_display_cs")
 # No specific layout overrides needed here unless we want to change its default anchoring/sizing.
 # Removed BasicTiles.tres, its role is superseded by MasterTileSet.tres
 # The script for TileDrawer.cs (id="3_abcde") is now correctly listed above.

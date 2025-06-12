@@ -1,0 +1,76 @@
+[gd_scene load_steps=2 format=3 uid="uid://b5w5hgwvsjqsx"]
+
+[ext_resource type="Script" path="res://ui/gizmos/ScaleGizmo.cs" id="1_abcde"]
+
+[node name="ScaleGizmo" type="Node2D"]
+script = ExtResource("1_abcde")
+
+[node name="SelectionBox" type="Line2D" parent="."]
+points = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+width = 1.0
+default_color = Color(0.5, 0.5, 1, 0.7)
+# Color for the selection box outline, can be adjusted
+
+[node name="TopLeftHandleArea" type="Area2D" parent="."]
+position = Vector2(-50, -50) # Placeholder, script will update
+
+[node name="HandleSprite" type="Sprite2D" parent="TopLeftHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="TopLeftHandleArea"]
+
+[node name="TopRightHandleArea" type="Area2D" parent="."]
+position = Vector2(50, -50) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="TopRightHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="TopRightHandleArea"]
+
+[node name="BottomLeftHandleArea" type="Area2D" parent="."]
+position = Vector2(-50, 50) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="BottomLeftHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="BottomLeftHandleArea"]
+
+[node name="BottomRightHandleArea" type="Area2D" parent="."]
+position = Vector2(50, 50) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="BottomRightHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="BottomRightHandleArea"]
+
+[node name="LeftHandleArea" type="Area2D" parent="."]
+position = Vector2(-50, 0) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="LeftHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="LeftHandleArea"]
+
+[node name="RightHandleArea" type="Area2D" parent="."]
+position = Vector2(50, 0) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="RightHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="RightHandleArea"]
+
+[node name="TopHandleArea" type="Area2D" parent="."]
+position = Vector2(0, -50) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="TopHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="TopHandleArea"]
+
+[node name="BottomHandleArea" type="Area2D" parent="."]
+position = Vector2(0, 50) # Placeholder
+
+[node name="HandleSprite" type="Sprite2D" parent="BottomHandleArea"]
+centered = true
+
+[node name="HandleCollision" type="CollisionShape2D" parent="BottomHandleArea"]

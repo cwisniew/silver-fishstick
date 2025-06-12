@@ -148,4 +148,82 @@ public partial class PlacedObject : Node2D
 	//     // Load other custom properties
 	//     // After loading, may need to re-fetch texture from AssetManager if not saved directly
 	// }
+
+	// --- Snap Points Logic ---
+	public struct GlobalSnapPoints
+	{
+		public Vector2 Center;
+		public float LeftX;
+		public float RightX;
+		public float TopY;
+		public float BottomY;
+		public float HorizontalCenterY => Center.Y;
+		public float VerticalCenterX => Center.X;
+	}
+
+	public GlobalSnapPoints GetCurrentGlobalSnapPoints()
+	{
+		if (objectSprite == null || objectSprite.Texture == null)
+		{
+			GD.PrintWarn($"PlacedObject '{AssetNameRef ?? Name ?? "Unnamed"}': Cannot get accurate snap points without sprite texture. Using GlobalPosition as center only.");
+			return new GlobalSnapPoints
+			{
+				Center = this.GlobalPosition,
+				LeftX = this.GlobalPosition.X,
+				RightX = this.GlobalPosition.X,
+				TopY = this.GlobalPosition.Y,
+				BottomY = this.GlobalPosition.Y
+			};
+		}
+
+		Vector2 textureSize = objectSprite.Texture.GetSize();
+		// Sprite is centered, so its GlobalPosition is its pivot/center.
+		float scaledHalfWidth = (textureSize.X * this.CurrentScale.X) / 2.0f;
+		float scaledHalfHeight = (textureSize.Y * this.CurrentScale.Y) / 2.0f;
+
+		Vector2 globalCenter = this.GlobalPosition;
+
+		return new GlobalSnapPoints
+		{
+			Center = globalCenter,
+			LeftX = globalCenter.X - scaledHalfWidth,
+			RightX = globalCenter.X + scaledHalfWidth,
+			TopY = globalCenter.Y - scaledHalfHeight,
+			BottomY = globalCenter.Y + scaledHalfHeight
+		};
+	}
+
+	public Vector2[] GetGlobalRotatedCorners()
+	{
+		if (objectSprite == null)
+		{
+			GD.PrintErr($"PlacedObject '{AssetNameRef ?? Name ?? "Unnamed"}': ObjectSprite node not found. Cannot get corners.");
+			return new Vector2[] { GlobalPosition, GlobalPosition, GlobalPosition, GlobalPosition };
+		}
+		if (objectSprite.Texture == null)
+		{
+			GD.PrintWarn($"PlacedObject '{AssetNameRef ?? Name ?? "Unnamed"}': ObjectSprite has no texture. Using GlobalPosition for corners.");
+			return new Vector2[] { GlobalPosition, GlobalPosition, GlobalPosition, GlobalPosition };
+		}
+
+		// Assuming ObjectSprite has Centered = true and Offset = (0,0)
+		Rect2 localSpriteRect = objectSprite.GetRect();
+
+		Vector2[] localCorners = new Vector2[4];
+		localCorners[0] = localSpriteRect.Position; // Top-Left
+		localCorners[1] = new Vector2(localSpriteRect.Position.X + localSpriteRect.Size.X, localSpriteRect.Position.Y); // Top-Right
+		localCorners[2] = localSpriteRect.Position + localSpriteRect.Size; // Bottom-Right
+		localCorners[3] = new Vector2(localSpriteRect.Position.X, localSpriteRect.Position.Y + localSpriteRect.Size.Y); // Bottom-Left
+
+		Vector2[] globalCorners = new Vector2[4];
+		Transform2D globalTransform = this.GlobalTransform;
+
+		for (int i = 0; i < 4; i++)
+		{
+			// GlobalTransform already includes this Node2D's scale (this.CurrentScale) and rotation.
+			// localCorners are relative to the sprite's origin (center).
+			globalCorners[i] = globalTransform * localCorners[i];
+		}
+		return globalCorners;
+	}
 }

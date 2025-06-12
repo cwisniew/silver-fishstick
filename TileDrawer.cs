@@ -21,7 +21,8 @@ public partial class TileDrawer : TileMap
 	private AssetData currentObjectAssetToPlace;
 
 	public int CurrentDrawingLayer { get; private set; } = 0;
-	private MainScene mainSceneInstance; // Added to store reference
+	private MainScene mainSceneInstance;
+	private GlobalSettings globalSettings; // Added for snapping logic
 
 
 	// Called when the node enters the scene tree for the first time.
@@ -63,6 +64,9 @@ public partial class TileDrawer : TileMap
 		{
 			GD.PrintErr("TileDrawer: Could not find MainScene node to connect DrawingModeChanged signal or store instance.");
 		}
+
+		globalSettings = GetNode<GlobalSettings>("/root/GlobalSettings");
+		if (globalSettings == null) GD.PrintErr("TileDrawer: GlobalSettings node not found!");
 	}
 
 public void OnDrawingModeChanged(MainScene.DrawingMode newMode)
@@ -158,7 +162,83 @@ public void OnDrawingModeChanged(MainScene.DrawingMode newMode)
 			{
 				if (currentObjectAssetToPlace != null)
 				{
-					Vector2 mouseGlobalPos = GetGlobalMousePosition();
+					Vector2 rawMouseGlobalPos = GetGlobalMousePosition();
+					Vector2 finalPlacementPos;
+
+					// Ensure globalSettings and mainSceneInstance are available (they should be from _Ready)
+					// These null checks are good, but ideally, they should be guaranteed by _Ready() or have early outs.
+					if (globalSettings == null) globalSettings = GetNode<GlobalSettings>("/root/GlobalSettings");
+					if (mainSceneInstance == null) mainSceneInstance = GetNode<MainScene>("/root/MainScene");
+
+					if (mainSceneInstance != null && globalSettings != null) // globalSettings check added for safety
+					{
+						// Prepare arguments for the new ApplySnappingRules signature
+						PlacedObject.GlobalSnapPoints hypotheticalSnapPoints;
+						if (currentObjectAssetToPlace != null && currentObjectAssetToPlace.PreviewTexture != null) {
+							Texture2D objectTexture = currentObjectAssetToPlace.PreviewTexture;
+							Vector2 textureSize = objectTexture.GetSize();
+							// Assume initial scale of 1,1 for a new object for preview snapping
+							float scaledHalfWidth = textureSize.X / 2.0f;
+							float scaledHalfHeight = textureSize.Y / 2.0f;
+							hypotheticalSnapPoints = new PlacedObject.GlobalSnapPoints {
+								Center = rawMouseGlobalPos,
+								LeftX = rawMouseGlobalPos.X - scaledHalfWidth, RightX = rawMouseGlobalPos.X + scaledHalfWidth,
+								TopY = rawMouseGlobalPos.Y - scaledHalfHeight, BottomY = rawMouseGlobalPos.Y + scaledHalfHeight
+							};
+						} else {
+							hypotheticalSnapPoints = new PlacedObject.GlobalSnapPoints { // Fallback if no texture
+								Center = rawMouseGlobalPos, LeftX = rawMouseGlobalPos.X, RightX = rawMouseGlobalPos.X,
+								TopY = rawMouseGlobalPos.Y, BottomY = rawMouseGlobalPos.Y
+							};
+						}
+
+						List<PlacedObject> allObjectsInScene = new List<PlacedObject>();
+						Node placedObjectsRootNode = mainSceneInstance.GetNodeOrNull("PlacedObjectsRoot");
+						if (placedObjectsRootNode != null) {
+							foreach (Node child in placedObjectsRootNode.GetChildren()) {
+								if (child is PlacedObject po) {
+									allObjectsInScene.Add(po);
+								}
+							}
+						}
+
+						finalPlacementPos = mainSceneInstance.ApplySnappingRules(
+							rawMouseGlobalPos,
+							hypotheticalSnapPoints,
+							null, // objectBeingMovedOrNull is null for new placement
+							allObjectsInScene,
+							out bool xObjSnapped, out float xObjSnapLine,
+							out bool yObjSnapped, out float yObjSnapLine,
+							out bool xGridSn,   out float xGridLine,
+							out bool yGridSn,   out float yGridLine
+						);
+
+						// Snap line display for placement
+						SnapFeedbackDisplay feedbackDisplay = mainSceneInstance.GetSnapFeedbackDisplay();
+						if (feedbackDisplay != null) {
+							feedbackDisplay.ClearLines();
+							Rect2 vpRect = mainSceneInstance.GetViewportRect();
+
+							if (xObjSnapped) {
+								feedbackDisplay.AddSnapLine(new Vector2(xObjSnapLine, vpRect.Position.Y), new Vector2(xObjSnapLine, vpRect.End.Y), Colors.Aqua);
+							}
+							if (yObjSnapped) {
+								feedbackDisplay.AddSnapLine(new Vector2(vpRect.Position.X, yObjSnapLine), new Vector2(vpRect.End.X, yObjSnapLine), Colors.Aqua);
+							}
+							if (xGridSn) {
+								feedbackDisplay.AddSnapLine(new Vector2(xGridLine, vpRect.Position.Y), new Vector2(xGridLine, vpRect.End.Y), Colors.LightGreen);
+							}
+							if (yGridSn) {
+								feedbackDisplay.AddSnapLine(new Vector2(vpRect.Position.X, yGridLine), new Vector2(vpRect.End.X, yGridLine), Colors.LightGreen);
+							}
+						}
+					}
+					else
+					{
+						GD.PrintErr("TileDrawer: MainScene or GlobalSettings instance is null. Cannot apply snapping rules. Using raw mouse position.");
+						finalPlacementPos = rawMouseGlobalPos;
+					}
+					// --- End Snapping Logic ---
 
 					Node2D objectsRoot = GetNode<Node2D>("/root/MainScene/PlacedObjectsRoot");
 					if (objectsRoot == null) {
@@ -183,9 +263,9 @@ public void OnDrawingModeChanged(MainScene.DrawingMode newMode)
 					PlaceObjectAction action = new PlaceObjectAction(
 						PlacedObjectScenePath,
 						currentObjectAssetToPlace.Name,
-						mouseGlobalPos,
+						finalPlacementPos, // Use the (potentially snapped) position
 						this.CurrentDrawingLayer,
-						objectRotation, // Pass the rotation
+						objectRotation,
 						assetManager,
 						objectsRoot
 					);
@@ -193,7 +273,7 @@ public void OnDrawingModeChanged(MainScene.DrawingMode newMode)
 					action.Execute(this);
 					undoRedoManager.RecordAction(action);
 
-					GD.Print($"TileDrawer: PlaceObjectAction recorded for '{currentObjectAssetToPlace.Name}' (Rot: {objectRotation}°) at {mouseGlobalPos} on layer {this.CurrentDrawingLayer}.");
+					GD.Print($"TileDrawer: PlaceObjectAction recorded for '{currentObjectAssetToPlace.Name}' (Rot: {objectRotation}°) at {finalPlacementPos} on layer {this.CurrentDrawingLayer}.");
 					GetViewport().SetInputAsHandled();
 				}
 				else
@@ -201,6 +281,8 @@ public void OnDrawingModeChanged(MainScene.DrawingMode newMode)
 					GD.PrintErr("TileDrawer: ObjectPlacement mode active, but no currentObjectAssetToPlace selected.");
 				}
 			}
+			// No explicit line clearing needed on InputEventMouseMotion for ObjectPlacement mode
+			// if SnapFeedbackDisplay self-clears via _Process, as lines are only added on click attempt.
 		}
 		else if (this.currentMode == MainScene.DrawingMode.Tile || this.currentMode == MainScene.DrawingMode.Room)
 		{

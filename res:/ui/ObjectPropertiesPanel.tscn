@@ -1,0 +1,211 @@
+[gd_scene load_steps=2 format=3 uid="uid://b8jqwcn0wqk7x"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_oppanel"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.1, 0.1, 0.12, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.4, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ObjectPropertiesPanel" type="PanelContainer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0 # Default width 260
+offset_bottom = 430.0 # Further Adjusted height for new AlignContextHBox
+grow_horizontal = 0
+size_flags_horizontal = 8 # Shrink End
+theme_override_styles/panel = SubResource("StyleBoxFlat_oppanel")
+visible = false # Default to hidden
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="PropertiesVBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+text = "Object Properties"
+horizontal_alignment = 1 # Center
+
+[node name="HSeparatorInfo" type="HSeparator" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="AssetNameHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center
+
+[node name="AssetNameDescLabel" type="Label" parent="MarginContainer/PropertiesVBox/AssetNameHBox"]
+layout_mode = 2
+text = "Asset:"
+
+[node name="AssetNameLabel" type="Label" parent="MarginContainer/PropertiesVBox/AssetNameHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "[No Object Selected]"
+clip_text = true
+
+[node name="HSeparatorTransform" type="HSeparator" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="TransformLabel" type="Label" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+text = "Transform:"
+horizontal_alignment = 1
+
+[node name="RotationHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="RotationLabel" type="Label" parent="MarginContainer/PropertiesVBox/RotationHBox"]
+layout_mode = 2
+text = "Rotation:"
+
+[node name="RotationLineEdit" type="LineEdit" parent="MarginContainer/PropertiesVBox/RotationHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Rot (deg)"
+custom_minimum_size = Vector2(80, 0)
+
+[node name="ScaleXHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="ScaleXLabel" type="Label" parent="MarginContainer/PropertiesVBox/ScaleXHBox"]
+layout_mode = 2
+text = "Scale X:"
+
+[node name="ScaleXLineEdit" type="LineEdit" parent="MarginContainer/PropertiesVBox/ScaleXHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Scale X"
+custom_minimum_size = Vector2(70, 0)
+
+[node name="ScaleYHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="ScaleYLabel" type="Label" parent="MarginContainer/PropertiesVBox/ScaleYHBox"]
+layout_mode = 2
+text = "Scale Y:"
+
+[node name="ScaleYLineEdit" type="LineEdit" parent="MarginContainer/PropertiesVBox/ScaleYHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.01
+max_value = 100.0
+step = 0.01
+value = 1.0
+
+[node name="HSeparatorAlign" type="HSeparator" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+visible = false # Controlled by MainScene
+
+[node name="AlignLabel" type="Label" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+text = "Align Objects:"
+horizontal_alignment = 1
+visible = false
+
+[node name="AlignContextHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+visible = false
+
+[node name="AlignContextLabel" type="Label" parent="MarginContainer/PropertiesVBox/AlignContextHBox"]
+layout_mode = 2
+text = "Relative To:"
+size_flags_horizontal = 3 # Fill
+
+[node name="AlignContextOptionButton" type="OptionButton" parent="MarginContainer/PropertiesVBox/AlignContextHBox"]
+layout_mode = 2
+size_flags_horizontal = 3 # ExpandFill
+
+[node name="AlignmentButtonsHBox1" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center
+visible = false # Controlled by MainScene
+
+[node name="AlignLeftButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox1"]
+layout_mode = 2
+text = "Lefts"
+
+[node name="AlignHorizontalCenterButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox1"]
+layout_mode = 2
+text = "Centers H"
+
+[node name="AlignRightButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox1"]
+layout_mode = 2
+text = "Rights"
+
+[node name="AlignmentButtonsHBox2" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center
+visible = false # Controlled by MainScene
+
+[node name="AlignTopButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox2"]
+layout_mode = 2
+text = "Tops"
+
+[node name="AlignVerticalCenterButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox2"]
+layout_mode = 2
+text = "Middles V"
+
+[node name="AlignBottomButton" type="Button" parent="MarginContainer/PropertiesVBox/AlignmentButtonsHBox2"]
+layout_mode = 2
+text = "Bottoms"
+
+[node name="HSeparatorDistribute" type="HSeparator" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+visible = false
+
+[node name="DistributionSectionLabel" type="Label" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+text = "Distribute Objects (3+ Selected):"
+horizontal_alignment = 1
+visible = false
+
+[node name="AlignContextHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+visible = false # Controlled by MainScene
+
+[node name="AlignContextLabel" type="Label" parent="MarginContainer/PropertiesVBox/AlignContextHBox"]
+layout_mode = 2
+text = "Relative To:"
+size_flags_horizontal = 3 # Fill, to push OptionButton to the right if HBox alignment is Begin/End
+
+[node name="AlignContextOptionButton" type="OptionButton" parent="MarginContainer/PropertiesVBox/AlignContextHBox"]
+layout_mode = 2
+size_flags_horizontal = 3 # ExpandFill
+
+[node name="DistributionButtonsHBox" type="HBoxContainer" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center
+visible = false
+
+[node name="DistributeHCentersButton" type="Button" parent="MarginContainer/PropertiesVBox/DistributionButtonsHBox"]
+layout_mode = 2
+text = "Space H-Centers"
+
+[node name="DistributeVCentersButton" type="Button" parent="MarginContainer/PropertiesVBox/DistributionButtonsHBox"]
+layout_mode = 2
+text = "Space V-Centers"
+
+[node name="HSeparatorActions" type="HSeparator" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+
+[node name="DeleteObjectButton" type="Button" parent="MarginContainer/PropertiesVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1) # Reddish text for delete
+text = "Delete Selected Object(s)"

@@ -57,7 +57,8 @@ public partial class UndoRedoManager : Node
 		{
 			EmitSignal(nameof(RedoStackChanged), false);
 		}
-		// No HistoryChanged signal here, as RecordAction is a new state, not a revert.
+		EmitSignal(nameof(HistoryChanged)); // Emit after new action is recorded
+		GD.Print("UndoRedoManager: HistoryChanged signal emitted after RecordAction.");
 		// GD.Print("Action recorded. Undo stack: " + undoStack.Count + ", Redo stack: " + redoStack.Count);
 	}
 
@@ -119,4 +120,18 @@ public partial class UndoRedoManager : Node
 
 	public bool CanUndo() => tileMap != null && undoStack.Count > 0;
 	public bool CanRedo() => tileMap != null && redoStack.Count > 0;
+
+	public void ClearHistory()
+	{
+		bool couldUndo = undoStack.Count > 0;
+		bool couldRedo = redoStack.Count > 0;
+
+		undoStack.Clear();
+		redoStack.Clear();
+
+		if (couldUndo) EmitSignal(nameof(UndoStackChanged), false);
+		if (couldRedo) EmitSignal(nameof(RedoStackChanged), false);
+		EmitSignal(nameof(HistoryChanged)); // History is now empty
+		GD.Print("UndoRedoManager: History cleared.");
+	}
 }

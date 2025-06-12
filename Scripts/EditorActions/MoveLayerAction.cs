@@ -1,63 +1,123 @@
 using Godot;
 
-public class MoveLayerAction : EditorAction
-{
-	private int layerIndexAtStart; // The original index of the layer that was moved
-	private int newVisualIndex;    // The index it was moved TO
+// Assuming TileDrawer is accessible (e.g. same namespace or via using directive)
+// using YourProject.Scripts.Tools;
 
-	public MoveLayerAction(int originalIndexOfMovedLayer, int targetVisualIndex)
+public partial class MoveLayerAction : EditorAction
+{
+	private int layerIndexAtStart;
+	private int newVisualIndex;
+
+	private TileDrawer tileDrawerInstance;
+	private string activeLayerNameBeforeOperation;
+	private int originalCurrentDrawingLayerIndex;
+
+	public MoveLayerAction(int originalIndexOfMovedLayer, int targetVisualIndex, TileDrawer drawer)
 	{
 		this.layerIndexAtStart = originalIndexOfMovedLayer;
 		this.newVisualIndex = targetVisualIndex;
-		// Description = $"Move Layer from {originalIndexOfMovedLayer} to {targetVisualIndex}";
-	}
+		this.tileDrawerInstance = drawer;
 
-	public override void Execute(TileMap tileMap)
-	{
-		// When executing (or redoing), the layer we intend to move is assumed to be
-		// currently at 'layerIndexAtStart'. This is true for the first execution.
-		// For redo, Undo() would have moved it from 'newVisualIndex' back to 'layerIndexAtStart'.
-		if (IsValidIndex(tileMap, layerIndexAtStart) && IsValidTargetIndex(tileMap, newVisualIndex, layerIndexAtStart > newVisualIndex))
+		if (this.tileDrawerInstance != null &&
+			this.tileDrawerInstance.CurrentDrawingLayer >= 0 &&
+			this.tileDrawerInstance.CurrentDrawingLayer < this.tileDrawerInstance.GetLayersCount())
 		{
-			tileMap.MoveLayer(layerIndexAtStart, newVisualIndex);
+			this.originalCurrentDrawingLayerIndex = this.tileDrawerInstance.CurrentDrawingLayer;
+			this.activeLayerNameBeforeOperation = this.tileDrawerInstance.GetLayerName(this.originalCurrentDrawingLayerIndex);
 		}
 		else
 		{
-			GD.PrintErr($"MoveLayerAction Execute: Invalid indices. From: {layerIndexAtStart}, To: {newVisualIndex}, Layers: {tileMap.GetLayersCount()}");
+			this.originalCurrentDrawingLayerIndex = -1;
+			this.activeLayerNameBeforeOperation = null;
+			if(this.tileDrawerInstance == null) GD.PrintErr("MoveLayerAction Constructor: TileDrawer instance is null.");
 		}
 	}
 
-	public override void Undo(TileMap tileMap)
+	public override void Execute(TileMap tileMapContext) // tileMapContext is expected to be the TileDrawer
 	{
+		if (tileDrawerInstance == null) {
+			// Try to cast if not set by constructor, though constructor should be primary way
+			tileDrawerInstance = tileMapContext as TileDrawer;
+			if (tileDrawerInstance == null) {
+				GD.PrintErr("MoveLayerAction Execute: TileDrawer instance is null or context is not TileDrawer.");
+				return;
+			}
+		}
+
+		if (IsValidIndex(tileDrawerInstance, layerIndexAtStart) && IsValidIndex(tileDrawerInstance, newVisualIndex))
+		{
+			tileDrawerInstance.MoveLayer(layerIndexAtStart, newVisualIndex);
+			// GD.Print($"MoveLayerAction Execute: Layer moved from {layerIndexAtStart} to {newVisualIndex}.");
+
+			RestoreActiveLayerSelection();
+		}
+		else
+		{
+			GD.PrintErr($"MoveLayerAction Execute: Invalid indices. From: {layerIndexAtStart}, To: {newVisualIndex}, Layers: {tileDrawerInstance.GetLayersCount()}");
+		}
+	}
+
+	public override void Undo(TileMap tileMapContext) // tileMapContext is expected to be the TileDrawer
+	{
+		if (tileDrawerInstance == null) {
+			tileDrawerInstance = tileMapContext as TileDrawer;
+			if (tileDrawerInstance == null) {
+				GD.PrintErr("MoveLayerAction Undo: TileDrawer instance is null or context is not TileDrawer.");
+				return;
+			}
+		}
+
 		// The layer we moved is NOW at 'newVisualIndex'. We want to move it back to 'layerIndexAtStart'.
-		// So, the layer currently at 'newVisualIndex' is the one we are targeting.
-		// The position it should return to is 'layerIndexAtStart'.
-		if (IsValidIndex(tileMap, newVisualIndex) && IsValidTargetIndex(tileMap, layerIndexAtStart, newVisualIndex > layerIndexAtStart))
+		if (IsValidIndex(tileDrawerInstance, newVisualIndex) && IsValidIndex(tileDrawerInstance, layerIndexAtStart))
 		{
-			tileMap.MoveLayer(newVisualIndex, layerIndexAtStart);
+			tileDrawerInstance.MoveLayer(newVisualIndex, layerIndexAtStart);
+			// GD.Print($"MoveLayerAction Undo: Layer moved from {newVisualIndex} back to {layerIndexAtStart}.");
+
+			RestoreActiveLayerSelection();
 		}
 		else
 		{
-			GD.PrintErr($"MoveLayerAction Undo: Invalid indices. From: {newVisualIndex}, To: {layerIndexAtStart}, Layers: {tileMap.GetLayersCount()}");
+			GD.PrintErr($"MoveLayerAction Undo: Invalid indices. From: {newVisualIndex}, To: {layerIndexAtStart}, Layers: {tileDrawerInstance.GetLayersCount()}");
 		}
 	}
 
-	private bool IsValidIndex(TileMap tileMap, int index)
+	private void RestoreActiveLayerSelection()
 	{
-		return index >= 0 && index < tileMap.GetLayersCount();
+		if (tileDrawerInstance == null || tileDrawerInstance.GetLayersCount() == 0) return;
+
+		if (!string.IsNullOrEmpty(activeLayerNameBeforeOperation))
+		{
+			bool found = false;
+			for (int i = 0; i < tileDrawerInstance.GetLayersCount(); i++)
+			{
+				if (tileDrawerInstance.GetLayerName(i) == activeLayerNameBeforeOperation)
+				{
+					tileDrawerInstance.SetCurrentDrawingLayer(i);
+					found = true;
+					// GD.Print($"MoveLayerAction: Restored active layer to '{activeLayerNameBeforeOperation}' at new index {i}.");
+					break;
+				}
+			}
+			if (!found) {
+				// GD.Print($"MoveLayerAction: Active layer '{activeLayerNameBeforeOperation}' not found after move. Defaulting selection.");
+				tileDrawerInstance.SetCurrentDrawingLayer(0); // Fallback to first layer
+			}
+		} else if (originalCurrentDrawingLayerIndex != -1) { // If no name, try to restore by original index if still valid
+            int targetIndex = Mathf.Clamp(originalCurrentDrawingLayerIndex, 0, tileDrawerInstance.GetLayersCount() - 1);
+            tileDrawerInstance.SetCurrentDrawingLayer(targetIndex);
+            // GD.Print($"MoveLayerAction: Restored active layer by original index (or clamped) to {targetIndex}.");
+        }
+		else if (tileDrawerInstance.GetLayersCount() > 0) // Absolute fallback
+		{
+			 tileDrawerInstance.SetCurrentDrawingLayer(0);
+			 // GD.Print("MoveLayerAction: No active layer name/index, defaulting to layer 0.");
+		}
 	}
 
-	// MoveLayer's to_position can be tricky. It's where it slots in.
-	// If moving layer 2 to 0 (up): MoveLayer(2,0). Layer 0->1, 1->2. Original 2 is now at 0.
-	// If moving layer 0 to 2 (down): MoveLayer(0,2). Layer 1->0, 2->1. Original 0 is now at 2.
-	// The to_position is the final index.
-	private bool IsValidTargetIndex(TileMap tileMap, int targetIndex, bool movingUp)
+	// Renamed tileMap parameter to td for clarity within this method
+	private bool IsValidIndex(TileMap td, int index)
 	{
-		// When moving a layer, to_position is the new index for the layer.
-		// If moving layer from index `src` to `dst`:
-		// If `src < dst` (moving down), layers between `src+1` and `dst` shift up by 1. The layer lands at `dst`.
-		// If `src > dst` (moving up), layers between `dst` and `src-1` shift down by 1. The layer lands at `dst`.
-		// So, targetIndex must be within [0, GetLayersCount() - 1].
-		return targetIndex >= 0 && targetIndex < tileMap.GetLayersCount();
+		if (td == null) return false;
+		return index >= 0 && index < td.GetLayersCount();
 	}
 }

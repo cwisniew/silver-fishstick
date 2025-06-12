@@ -1,0 +1,94 @@
+[gd_scene load_steps=3 format=3 uid="uid://dpqcwvj1j1w0k"]
+
+[ext_resource type="Script" path="res://ui/AppSettingsPanelController.cs" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c1g7g"]
+bg_color = Color(0.15, 0.15, 0.18, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.4, 0.5, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="AppSettingsPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(450, 220)
+script = ExtResource("1_script")
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -225.0
+offset_top = -110.0
+offset_right = 225.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_c1g7g")
+visible = false
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="SettingsVBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CurrentPathLabel" type="Label" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+text = "Current Global Asset Library Path:"
+
+[node name="PathDisplayLineEdit" type="LineEdit" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+placeholder_text = "No path set or default path active."
+editable = false
+focus_mode = 0 # Not focusable if not editable
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10 # Extra spacing for visual break
+
+[node name="NewPathLabel" type="Label" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+text = "Set New Global Asset Library Path:"
+
+[node name="NewPathHBox" type="HBoxContainer" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+
+[node name="PathInputLineEdit" type="LineEdit" parent="MarginContainer/SettingsVBox/NewPathHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Enter new global path or browse..."
+
+[node name="BrowseButton" type="Button" parent="MarginContainer/SettingsVBox/NewPathHBox"]
+layout_mode = 2
+text = "Browse..."
+
+[node name="StatusMessageLabel" type="Label" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+text = ""
+autowrap_mode = 3 # WordSmart in Godot 4 TextServer
+clip_text = true
+size_flags_vertical = 3 # ExpandFill
+
+[node name="ActionButtonsHBox" type="HBoxContainer" parent="MarginContainer/SettingsVBox"]
+layout_mode = 2
+alignment = 2 # End alignment
+
+[node name="ApplyPathButton" type="Button" parent="MarginContainer/SettingsVBox/ActionButtonsHBox"]
+layout_mode = 2
+text = "Apply & Reload Assets"
+
+[node name="CloseSettingsButton" type="Button" parent="MarginContainer/SettingsVBox/ActionButtonsHBox"]
+layout_mode = 2
+text = "Close"
