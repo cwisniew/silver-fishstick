@@ -2,9 +2,10 @@ using Godot; // Required for Token type, even if not a Node itself
 
 public class Combatant
 {
-	public string Name { get; set; } // Can be character name if no token, or overridden
+	public string Name { get; set; }
 	public int Initiative { get; set; }
-	public Token LinkedToken { get; set; } // Reference to the Token node on the map
+	public Token LinkedToken { get; set; }
+	public long NetworkPlayerId { get; set; } = 0; // 0 if NPC or unassigned, network ID if player controlled
 
 	// Computed property for display in the tracker
 	public string DisplayText

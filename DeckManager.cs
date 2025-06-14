@@ -6,13 +6,51 @@ public static class DeckManager
 {
 	public static List<Deck> AvailableDecks { get; private set; } = new List<Deck>();
 	private const string DecksFilePath = "user://user_decks.json";
-	public static event Action OnDecksChanged;
+	public static event Action OnDecksChanged; // For local UI updates (e.g., on server after its own action)
+	public static event Action OnDecksExternallyUpdated; // For UI updates when network pushes new state
 
-	static DeckManager()
+	// static DeckManager() // Static constructor removed, LoadDecks called explicitly
+
+	public static string SerializeDecksForNetwork()
 	{
-		// Load decks when the game starts or this class is first accessed
-		// LoadDecks(); // Decided to call this explicitly from DecksPanel._Ready() to ensure UI is ready
+		var decksListDict = new Godot.Collections.Array();
+		foreach (Deck deck in AvailableDecks)
+		{
+			decksListDict.Add(deck.ToDictionary());
+		}
+		return Json.Stringify(decksListDict);
 	}
+
+	public static void ApplyFullDeckStateFromNetwork(string jsonData)
+	{
+		AvailableDecks.Clear(); // Clear existing decks
+		if (string.IsNullOrEmpty(jsonData))
+		{
+			OnDecksExternallyUpdated?.Invoke(); // Notify UI to clear itself
+			GD.Print("DeckManager: Applied empty deck state from network.");
+			return;
+		}
+
+		var parsed = Json.ParseString(jsonData);
+		if (parsed.VariantType == Variant.Type.Array)
+		{
+			var decksArray = parsed.AsGodotArray();
+			foreach (var deckVariant in decksArray)
+			{
+				if (deckVariant.VariantType == Variant.Type.Dictionary)
+				{
+					AvailableDecks.Add(Deck.FromDictionary(deckVariant.AsGodotDictionary()));
+				}
+			}
+			GD.Print($"DeckManager: Applied full deck state from network. {AvailableDecks.Count} decks loaded.");
+		}
+		else
+		{
+			GD.PrintErr("DeckManager: Failed to parse deck state from network - root was not an array.");
+		}
+		OnDecksExternallyUpdated?.Invoke(); // Notify UI to refresh from the new DeckManager data
+	}
+
 
 	public static void CreateNewDeck(string name, bool addStandard52 = false)
 	{

@@ -113,8 +113,9 @@ public class TokenData
 	public CharacterSheetData SheetData { get; set; }
 	public bool HasVision { get; set; } = true;
 	public float VisionRangeGameUnits { get; set; } = 6.0f;
-	public string NodeName { get; set; } // Godot Node.Name, could be useful for re-linking if IDs are not stable
-	public Vector2Data Size {get; set; } // Token's size
+	public string NodeName { get; set; }
+	public Vector2Data Size {get; set; }
+	public long OwningPlayerId { get; set; } = 1; // Default to server/GM
 
 	public TokenData() { }
 
@@ -123,7 +124,8 @@ public class TokenData
 		{ "Position", Position?.ToDictionary() }, { "RotationDegrees", RotationDegrees },
 		{ "TexturePath", TexturePath }, { "SheetData", SheetData?.ToDictionary() },
 		{ "HasVision", HasVision }, { "VisionRange", VisionRangeGameUnits },
-		{ "NodeName", NodeName }, {"Size", Size?.ToDictionary() }
+		{ "NodeName", NodeName }, {"Size", Size?.ToDictionary() },
+		{ "OwningPlayerId", OwningPlayerId }
 	};
 
 	public static TokenData FromDictionary(Godot.Collections.Dictionary dict)
@@ -137,31 +139,32 @@ public class TokenData
 		data.VisionRangeGameUnits = dict.GetOrDefault("VisionRange", 6.0f).AsSingle();
 		data.NodeName = dict.GetOrDefault("NodeName", "Token").ToString();
 		if (dict.ContainsKey("Size")) data.Size = Vector2Data.FromDictionary(dict["Size"].AsGodotDictionary());
+		data.OwningPlayerId = dict.GetOrDefault("OwningPlayerId", 1L).AsInt64(); // Default to 1 (long)
 		return data;
 	}
 }
 
 // --- Combat Tracker ---
-// These are simplified for now
 public class CombatantData
 {
-	public string Name { get; set; } // Could be CharacterSheet.Name or a custom name
+	public string Name { get; set; }
 	public int Initiative { get; set; }
-	// If LinkedToken is saved, how to relink? By NodeName? Index? UUID?
-	// For now, just storing name. If it's a token, its TokenData will be in the main token list.
-	public string LinkedTokenNodeName { get; set; } // Store NodeName of the token if linked
+	public string LinkedTokenNodeName { get; set; }
+	public long NetworkPlayerId { get; set; } = 0; // 0 if not player controlled, otherwise network ID
 
 	public CombatantData() { }
 
 	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
 	{
-		{ "Name", Name }, { "Initiative", Initiative }, { "LinkedTokenNodeName", LinkedTokenNodeName }
+		{ "Name", Name }, { "Initiative", Initiative },
+		{ "LinkedTokenNodeName", LinkedTokenNodeName }, { "NetworkPlayerId", NetworkPlayerId }
 	};
 	public static CombatantData FromDictionary(Godot.Collections.Dictionary dict) => new CombatantData
 	{
 		Name = dict.GetOrDefault("Name", "Combatant").ToString(),
 		Initiative = dict.GetOrDefault("Initiative", 0).AsInt32(),
-		LinkedTokenNodeName = dict.GetOrDefault("LinkedTokenNodeName", "").ToString()
+		LinkedTokenNodeName = dict.GetOrDefault("LinkedTokenNodeName", "").ToString(),
+		NetworkPlayerId = dict.GetOrDefault("NetworkPlayerId", 0L).AsInt64() // Default to 0 (long)
 	};
 }
 
@@ -201,7 +204,14 @@ public class DrawingLineData
 	public ColorData LineColor { get; set; }
 	public float Thickness { get; set; }
 
-	public DrawingLineData() { }
+	public DrawingLineData() { Points = new List<Vector2Data>(); } // Ensure Points is initialized
+
+	public DrawingLineData(List<Vector2> points, Color color, float thickness) // Assumes points are local
+	{
+		Points = points.Select(p => new Vector2Data(p)).ToList();
+		LineColor = new ColorData(color);
+		Thickness = thickness;
+	}
 
 	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
 	{
@@ -219,6 +229,31 @@ public class DrawingLineData
 		if (dict.ContainsKey("LineColor")) data.LineColor = ColorData.FromDictionary(dict["LineColor"].AsGodotDictionary());
 		data.Thickness = dict.GetOrDefault("Thickness", 2f).AsSingle();
 		return data;
+	}
+
+	public static Godot.Collections.Array ListToGodotArrayOfDictionaries(List<DrawingLineData> list)
+	{
+		var godotArray = new Godot.Collections.Array();
+		if (list == null) return godotArray;
+		foreach (var item in list)
+		{
+			godotArray.Add(item.ToDictionary());
+		}
+		return godotArray;
+	}
+
+	public static List<DrawingLineData> ListFromGodotArray(Godot.Collections.Array godotArray)
+	{
+		var list = new List<DrawingLineData>();
+		if (godotArray == null) return list;
+		foreach (var itemVariant in godotArray)
+		{
+			if (itemVariant.VariantType == Variant.Type.Dictionary)
+			{
+				list.Add(DrawingLineData.FromDictionary(itemVariant.AsGodotDictionary()));
+			}
+		}
+		return list;
 	}
 }
 

@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://decks_panel_scene" path="res://DecksPanel.tscn" id="7_decks_panel")]
 [ext_resource type="Script" path="res://NetworkManager.cs" id="8_net_mgr")]
 
-[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog", "networkManagerNode", "serverIpInput", "portInput", "hostButton", "joinButton", "disconnectButton", "networkStatusLabel", "playerListDisplay", "spawnTestNetworkTokenButton")]
+[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog", "networkManagerNode", "serverIpInput", "portInput", "hostButton", "joinButton", "disconnectButton", "networkStatusLabel", "playerListDisplay", "spawnTestNetworkTokenButton", "testModifySheetButton", "assignOwnerButton")]
 script = ExtResource("1_abcde")
 chatLogNode = NodePath("ChatUIContainer/ChatDisplay")
 chatMessageInput = NodePath("ChatUIContainer/ChatMessageInput")
@@ -330,9 +330,18 @@ layout_mode = 2
 text = "Disconnect"
 disabled = true # Initially disabled
 
-[node name="SpawnTestNetworkTokenButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"] # Added here
+[node name="SpawnTestNetworkTokenButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
 layout_mode = 2
 text = "Spawn Net Token (Host)"
+
+[node name="TestModifySheetButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
+layout_mode = 2
+text = "Mod HP (Host)"
+
+[node name="AssignOwnerButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"] # Added here
+layout_mode = 2
+text = "Assign Owner (Host)"
+
 
 [node name="PlayerListDisplay" type="ItemList" parent="NetworkPanel/VBoxContainer"]
 layout_mode = 2

@@ -28,6 +28,13 @@ public partial class DecksPanel : PanelContainer
 	{
 		_soundManager = GetNodeOrNull<SoundManager>("/root/SoundManager");
 		if (_soundManager == null) GD.PrintErr("DecksPanel: SoundManager Autoload not found!");
+		// Cache NetworkManager if in a multiplayer session
+		if (Multiplayer.HasMultiplayerPeer())
+		{
+			_networkManagerCache = GetNodeOrNull<NetworkManager>("/root/MainScene/NetworkManagerNode"); // Added
+			if (_networkManagerCache == null) GD.PrintErr("DecksPanel: NetworkManagerNode not found for server RPCs.");
+		}
+
 
 		// Connect signals for UI elements
 		createDeckButton.Pressed += OnCreateDeckButtonPressed;
@@ -39,20 +46,39 @@ public partial class DecksPanel : PanelContainer
 		resetDeckButton.Pressed += OnResetDeckButtonPressed;
 
 		// Subscribe to DeckManager changes
-		DeckManager.OnDecksChanged += UpdateDeckListDisplay;
-		DeckManager.LoadDecks(); // Load decks when panel is ready (this will also trigger OnDecksChanged)
+		DeckManager.OnDecksChanged += UpdateDeckListDisplay; // For server's local changes
+		DeckManager.OnDecksExternallyUpdated += UpdateDeckListDisplay; // For client's network updates
 
-		UpdateDeckListDisplay(); // Initial population
-		UpdateSelectedDeckView(); // Set initial state of selected deck UI
+		if (!Multiplayer.HasMultiplayerPeer() || Multiplayer.IsServer())
+		{
+			DeckManager.LoadDecks(); // Server/offline loads from file
+		}
+		// Clients will receive deck state from server via RPC and NetworkAllDecksStateReceived signal in MainScene.
+		// MainScene will call DeckManager.ApplyFullDeckStateFromNetwork, which then invokes OnDecksExternallyUpdated.
+
+		UpdateDeckListDisplay();
+		UpdateSelectedDeckView();
+
+		// Disable UI for clients
+		if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer())
+		{
+			createDeckButton.Disabled = true;
+			deleteDeckButton.Disabled = true;
+			// shuffleButton, drawButton, resetButton are handled by UpdateSelectedDeckView based on _selectedDeck
+			// but their actions should also be server-only. We will disable them if client.
+			// ItemList selection can be disabled by setting FocusMode to None, but it might still be useful for viewing.
+			// For now, action buttons being disabled is the main thing.
+			if (deckListDisplay != null) deckListDisplay.FocusMode = FocusModeEnum.None; // Make non-interactive
+		}
 	}
 
 	public override void _ExitTree()
 	{
-		// Unsubscribe from static event when panel is removed
 		DeckManager.OnDecksChanged -= UpdateDeckListDisplay;
+		DeckManager.OnDecksExternallyUpdated -= UpdateDeckListDisplay;
 	}
 
-	private void UpdateDeckListDisplay()
+	private void UpdateDeckListDisplay() // This is now also called by OnDecksExternallyUpdated
 	{
 		deckListDisplay.Clear();
 		foreach (var deck in DeckManager.AvailableDecks)
@@ -146,74 +172,85 @@ public partial class DecksPanel : PanelContainer
 		{
 			// For now, always create a standard 52-card deck.
 			// Later, could add a checkbox in the dialog to control this.
-			DeckManager.CreateNewDeck(deckName, true);
+			DeckManager.CreateNewDeck(deckName, true); // This calls SaveDecks and OnDecksChanged
 			_chatLog?.AddMessage($"Deck '{deckName}' created.", Colors.Green);
-			// UpdateDeckListDisplay is called by OnDecksChanged event
+			BroadcastDeckStateIfServer(); // Server broadcasts the new full state
 		}
-		else
-		{
-			_chatLog?.AddMessage("Deck creation cancelled: Name was empty.", Colors.Orange);
-		}
+		else _chatLog?.AddMessage("Deck creation cancelled: Name was empty.", Colors.Orange);
 	}
 
 	private void OnDeleteDeckButtonPressed()
 	{
-		if (_selectedDeck != null)
-		{
-			string deckName = _selectedDeck.Name; // Store name before it's potentially nulled
-			DeckManager.DeleteDeck(deckName);
-			_chatLog?.AddMessage($"Deck '{deckName}' deleted.", Colors.OrangeRed);
-			_selectedDeck = null; // Clear selection
-			lastDrawnCardLabel.Text = "Last Drawn: -";
-			// UpdateDeckListDisplay is called by OnDecksChanged event
-		}
-		else
-		{
-			_chatLog?.AddMessage("No deck selected to delete.", Colors.Yellow);
-		}
+		if (_selectedDeck == null) { _chatLog?.AddMessage("No deck selected to delete.", Colors.Yellow); return; }
+		if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer()) { _chatLog?.AddMessage("Clients cannot delete decks.", Colors.OrangeRed); return; }
+
+		string deckName = _selectedDeck.Name;
+		DeckManager.DeleteDeck(deckName); // This calls SaveDecks and OnDecksChanged
+		_chatLog?.AddMessage($"Deck '{deckName}' deleted.", Colors.OrangeRed);
+		_selectedDeck = null;
+		lastDrawnCardLabel.Text = "Last Drawn: -";
+		BroadcastDeckStateIfServer();
 	}
 
 	private void OnShuffleButtonPressed()
 	{
-		if (_selectedDeck != null)
-		{
-			_soundManager?.PlaySfx("card_shuffle.wav.txt");
-			_selectedDeck.Shuffle();
-			_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' shuffled.", Colors.CornflowerBlue);
-			lastDrawnCardLabel.Text = "Last Drawn: - (Shuffled)";
-			UpdateSelectedDeckView();
-		}
+		if (_selectedDeck == null) return;
+		if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer()) { _chatLog?.AddMessage("Clients cannot shuffle decks.", Colors.OrangeRed); return; }
+
+		_soundManager?.PlaySfx("card_shuffle.wav.txt");
+		_selectedDeck.Shuffle();
+		DeckManager.SaveDecks(); // Save change
+		_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' shuffled.", Colors.CornflowerBlue);
+		lastDrawnCardLabel.Text = "Last Drawn: - (Shuffled)";
+		UpdateSelectedDeckView(); // Update local UI
+		BroadcastDeckStateIfServer();
 	}
 
 	private void OnDrawButtonPressed()
 	{
-		if (_selectedDeck != null)
+		if (_selectedDeck == null) return;
+		if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer()) { _chatLog?.AddMessage("Clients cannot draw cards.", Colors.OrangeRed); return; }
+
+		Card drawnCard = _selectedDeck.DrawCard();
+		DeckManager.SaveDecks(); // Save change (deck/discard state changed)
+		if (drawnCard != null)
 		{
-			Card drawnCard = _selectedDeck.DrawCard();
-			if (drawnCard != null)
-			{
-				_soundManager?.PlaySfx("card_draw.wav.txt");
-				_chatLog?.AddMessage($"Drew '{drawnCard}' from '{_selectedDeck.Name}'.", Colors.LightSeaGreen);
-				lastDrawnCardLabel.Text = $"Last Drawn: {drawnCard}";
-			}
-			else
-			{
-				_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' is completely empty.", Colors.Yellow);
-				lastDrawnCardLabel.Text = "Last Drawn: - (Empty)";
-			}
-			UpdateSelectedDeckView();
+			_soundManager?.PlaySfx("card_draw.wav.txt");
+			_chatLog?.AddMessage($"Drew '{drawnCard}' from '{_selectedDeck.Name}'.", Colors.LightSeaGreen);
+			lastDrawnCardLabel.Text = $"Last Drawn: {drawnCard}";
 		}
+		else
+		{
+			_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' is completely empty.", Colors.Yellow);
+			lastDrawnCardLabel.Text = "Last Drawn: - (Empty)";
+		}
+		UpdateSelectedDeckView(); // Update local UI
+		BroadcastDeckStateIfServer();
 	}
 
 	private void OnResetDeckButtonPressed()
 	{
-		if (_selectedDeck != null)
+		if (_selectedDeck == null) return;
+		if (Multiplayer.HasMultiplayerPeer() && !Multiplayer.IsServer()) { _chatLog?.AddMessage("Clients cannot reset decks.", Colors.OrangeRed); return; }
+
+		_soundManager?.PlaySfx("card_shuffle.wav.txt");
+		_selectedDeck.ResetDeck();
+		DeckManager.SaveDecks(); // Save change
+		_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' reset and shuffled.", Colors.CornflowerBlue);
+		lastDrawnCardLabel.Text = "Last Drawn: - (Reset)";
+		UpdateSelectedDeckView(); // Update local UI
+		BroadcastDeckStateIfServer();
+	}
+
+	private void BroadcastDeckStateIfServer()
+	{
+		if (_networkManagerCache != null && _networkManagerCache.IsServer())
 		{
-			_soundManager?.PlaySfx("card_shuffle.wav.txt");
-			_selectedDeck.ResetDeck(); // Reshuffles discard into deck
-			_chatLog?.AddMessage($"Deck '{_selectedDeck.Name}' reset and shuffled.", Colors.CornflowerBlue);
-			lastDrawnCardLabel.Text = "Last Drawn: - (Reset)";
-			UpdateSelectedDeckView();
+			string allDecksJson = DeckManager.SerializeDecksForNetwork();
+			_networkManagerCache.Rpc(nameof(NetworkManager.RpcClientReceiveAllDecksState), allDecksJson);
 		}
 	}
 }
+// Need to ensure _networkManagerCache is set in _Ready for DecksPanel
+// Also, the Initialize method needs to accept it if it's passed from MainScene.
+// For now, assuming DecksPanel gets it from /root/ path.
