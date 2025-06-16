@@ -1,0 +1,117 @@
+[gd_scene load_steps=2 format=3 uid="uid://status_fx_editor_panel"]
+
+[ext_resource type="Script" path="res://StatusEffectEditorPanel.cs" id="1_fx_editor_cs"]
+
+[node name="StatusEffectEditorPanel" type="PanelContainer" node_paths=PackedStringArray("selectedTokenNameLabel", "currentEffectsList", "removeSelectedEffectButton", "effectNameInput", "effectDescriptionInput", "effectDurationInput", "effectIconPathInput", "effectSourceInput", "addEffectButton")]
+anchors_preset = 1 # Top Left, but we can move it around or anchor it differently in MainScene
+offset_right = 350.0
+offset_bottom = 450.0
+custom_minimum_size = Vector2(300, 400)
+visible = false # Initially hidden
+script = ExtResource("1_fx_editor_cs")
+selectedTokenNameLabel = NodePath("VBoxContainer/SelectedTokenNameLabel")
+currentEffectsList = NodePath("VBoxContainer/CurrentEffectsList")
+removeSelectedEffectButton = NodePath("VBoxContainer/RemoveSelectedEffectButton")
+effectNameInput = NodePath("VBoxContainer/GridInputs/EffectNameInput")
+effectDescriptionInput = NodePath("VBoxContainer/GridInputs/EffectDescriptionInput")
+effectDurationInput = NodePath("VBoxContainer/GridInputs/EffectDurationInput")
+effectIconPathInput = NodePath("VBoxContainer/GridInputs/EffectIconPathInput")
+effectSourceInput = NodePath("VBoxContainer/GridInputs/EffectSourceInput")
+addEffectButton = NodePath("VBoxContainer/AddEffectButton")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Status Effect Editor"
+horizontal_alignment = 1
+
+[node name="SelectedTokenNameLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Selected Token: None"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="CurrentEffectsList" type="ItemList" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 100)
+size_flags_vertical = 3
+
+[node name="RemoveSelectedEffectButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Remove Selected Effect"
+disabled = true
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Add/Edit Effect:"
+horizontal_alignment = 1
+
+[node name="GridInputs" type="GridContainer" parent="VBoxContainer"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelName" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Name:"
+size_flags_horizontal = 3
+
+[node name="EffectNameInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Blinded"
+size_flags_horizontal = 3
+
+[node name="LabelDesc" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Description:"
+size_flags_horizontal = 3
+
+[node name="EffectDescriptionInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Disadvantage on attacks"
+size_flags_horizontal = 3
+
+[node name="LabelDuration" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Duration (turns):"
+size_flags_horizontal = 3
+
+[node name="EffectDurationInput" type="SpinBox" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+min_value = -1.0 # Allow -1 for permanent
+max_value = 999.0
+value = 0.0 # Default to 0 (e.g. instant or permanent until removed)
+allow_greater = true
+size_flags_horizontal = 3
+
+[node name="LabelIcon" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Icon Path:"
+size_flags_horizontal = 3
+
+[node name="EffectIconPathInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "res://assets/icons/status/blinded.png.txt"
+size_flags_horizontal = 3
+
+[node name="LabelSource" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Source:"
+size_flags_horizontal = 3
+
+[node name="EffectSourceInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Wizard Spell"
+size_flags_horizontal = 3
+
+[node name="AddEffectButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Add/Update Effect"
+disabled = true
+custom_minimum_size = Vector2(150,0) # Make button wider
+size_flags_horizontal = 4 # Center

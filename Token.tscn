@@ -9,13 +9,14 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"] # Renamed for clarity
 size = Vector2(128, 128) # Default size, can be adjusted
 
-[node name="TokenBody" type="CharacterBody2D"]
+[node name="TokenBody" type="CharacterBody2D" node_paths=PackedStringArray("_statusEffectIconContainerPath")]
 collision_layer = 1 # Tokens on layer 1
 collision_mask = 2  # Interact with layer 2 (Obstacles)
 script = ExtResource("1_xyz12")
+_statusEffectIconContainerPath = NodePath("StatusEffectIconContainer")
 # CharacterBody2D properties like motion_mode can be set here if needed (e.g., Grounded)
 
-[node name="TokenSpriteVisuals" type="Sprite2D" parent="."] # Renamed from TokenSprite
+[node name="TokenSpriteVisuals" type="Sprite2D" parent="."]
 texture_filter = 1 # Prevent blurry sprites
 # The actual texture will be set by Token.cs's TokenTexture property
 
@@ -36,3 +37,48 @@ shadow_color = Color(0, 0, 0, 0.85)
 # Ensure VisionLight is drawn correctly relative to TokenSpriteVisuals,
 # typically VisionLight might be a child of TokenSpriteVisuals or have similar Z ordering.
 # For now, keeping as sibling.
+
+[node name="StatusEffectIconContainer" type="HBoxContainer" parent="."]
+anchors_preset = 7 # Center bottom
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -64.0 # Assuming token width is around 128
+offset_top = -30.0  # Position below the token sprite (adjust if sprite not centered at 0,0)
+offset_right = 64.0
+offset_bottom = -6.0 # Height of 24px for icons
+grow_horizontal = 2 # Center
+grow_vertical = 0   # Top
+alignment = 1 # HBoxContainer.ALIGNMENT_CENTER
+# Note: Positioning might need adjustment based on TokenSpriteVisuals's position and size.
+# If TokenSpriteVisuals is e.g. 128x128 and centered at (0,0), its bottom edge is at Y=64.
+# So, to place icons below it, StatusEffectIconContainer Y should be > 64 or use margins.
+# Let's try placing it above for now, by setting offset_top and offset_bottom to negative values from sprite's top.
+# Assuming sprite visual is 128x128, centered. Top edge at Y = -64.
+# Let's position icons above the sprite.
+# Anchor Top Center
+# anchors_preset = 5
+# offset_left = -64.0
+# offset_top = -90.0 # (Sprite top is -64, icons are 24px high, so -64 - 24 - some_padding)
+# offset_right = 64.0
+# offset_bottom = -66.0 # -90 + 24
+# This is hard to get right without visual editor.
+# Let's try a simpler approach: just a child HBox, GM can move it in editor if needed.
+# Position below the sprite center:
+# position = Vector2(0, 70) # If sprite is 128x128, centered at (0,0), this is just below it.
+# Let's use offset from center, below.
+# Anchor Preset: Center Bottom
+# offset_left = -60
+# offset_top = 64
+# offset_right = 60
+# offset_bottom = 64 + 24 = 88
+# This is still tricky. The provided anchors_preset = 7 is "Center Bottom".
+# Let's adjust offsets for that.
+# A typical 128px sprite centered at (0,0) has its visual from -64 to +64.
+# So, anchor at top of sprite: offset_top = -64 - 24 (approx -88), offset_bottom = -64.
+# Let's try putting it at Y = -70 relative to TokenBody center for now.
+# The `anchors_preset` was a suggestion. Direct positioning might be simpler for now.
+position = Vector2(0, -70) # Position HBox above the token center.
+custom_minimum_size = Vector2(128, 24) # Allow space for a few icons
+alignment = 1 # Center icons within the HBox

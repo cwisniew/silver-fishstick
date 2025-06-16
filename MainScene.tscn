@@ -8,8 +8,9 @@
 [ext_resource type="PackedScene" uid="uid://handout_disp_123" path="res://HandoutDisplay.tscn" id="6_xyz78")]
 [ext_resource type="PackedScene" uid="uid://decks_panel_scene" path="res://DecksPanel.tscn" id="7_decks_panel")]
 [ext_resource type="Script" path="res://NetworkManager.cs" id="8_net_mgr")]
+[ext_resource type="PackedScene" uid="uid://status_fx_editor_panel" path="res://StatusEffectEditorPanel.tscn" id="9_fx_editor"] # Status Effect Editor Panel
 
-[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog", "networkManagerNode", "serverIpInput", "portInput", "hostButton", "joinButton", "disconnectButton", "networkStatusLabel", "playerListDisplay", "spawnTestNetworkTokenButton", "testModifySheetButton", "assignOwnerButton")]
+[node name="MainScene" type="Node2D" node_paths=PackedStringArray("chatLogNode", "chatMessageInput", "combatTrackerPanel", "trackerListVBox", "addTokenButton", "nextTurnButton", "startCombatButton", "resetCombatButton", "roundCounterLabel", "combatTracker", "changeTokenImageButton", "tokenImageFileDialog", "mapBackgroundSprite", "loadMapButton", "mapFileDialog", "drawingOverlay", "toggleDrawModeButton", "clearDrawingsButton", "toggleMeasureModeButton", "shareHandoutButton", "handoutImageFileDialog", "notesPanel", "toggleNotesButton", "notesTextEdit", "decksPanel", "toggleDecksPanelButton", "toggleMusicButton", "macroPanel", "toggleMacroPanelButton", "macroInputTextEdit", "runMacroButton", "saveCampaignButton", "loadCampaignButton", "campaignFileDialog", "networkManagerNode", "serverIpInput", "portInput", "hostButton", "joinButton", "disconnectButton", "networkStatusLabel", "playerListDisplay", "spawnTestNetworkTokenButton", "testModifySheetButton", "assignOwnerButton", "statusEffectEditorPanel", "toggleTokenFxEditorButton")]
 script = ExtResource("1_abcde")
 chatLogNode = NodePath("ChatUIContainer/ChatDisplay")
 chatMessageInput = NodePath("ChatUIContainer/ChatMessageInput")
@@ -275,6 +276,14 @@ layout_mode = 2
 size_flags_horizontal = 4 # Center
 text = "Run Macro"
 
+[node name="StatusEffectEditorPanel" parent="." instance=ExtResource("9_fx_editor")] # Instanced here
+visible = false
+# Example positioning, can be adjusted
+offset_left = 50.0
+offset_top = 200.0
+offset_right = 400.0
+offset_bottom = 600.0
+
 [node name="NetworkManagerNode" type="Node" parent="."]
 script = ExtResource("8_net_mgr")
 
@@ -338,9 +347,13 @@ text = "Spawn Net Token (Host)"
 layout_mode = 2
 text = "Mod HP (Host)"
 
-[node name="AssignOwnerButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"] # Added here
+[node name="AssignOwnerButton" type="Button" parent="NetworkPanel/VBoxContainer/HBoxButtons"]
 layout_mode = 2
 text = "Assign Owner (Host)"
+
+[node name="ToggleTokenFxEditorButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"] # Added to DrawingControls for now
+layout_mode = 2
+text = "Token FX"
 
 
 [node name="PlayerListDisplay" type="ItemList" parent="NetworkPanel/VBoxContainer"]

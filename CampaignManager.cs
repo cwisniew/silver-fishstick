@@ -26,18 +26,20 @@ public static class CampaignManager
 
 		// 2. Populate Token Data
 		rootData.Tokens = new List<TokenData>();
-		foreach (Token token in mainScene.GetTokens()) // Assumes GetTokens() returns IEnumerable<Token> or similar
+		foreach (Token token in mainScene.GetTokens())
 		{
 			var tokenData = new TokenData
 			{
 				Position = new Vector2Data(token.GlobalPosition),
 				RotationDegrees = token.RotationDegrees,
 				TexturePath = token.TokenTexture?.ResourcePath ?? string.Empty,
-				SheetData = token.Sheet != null ? new CharacterSheetData(token.Sheet) : new CharacterSheetData(), // Save sheet
+				// Use the new CharacterSheetData constructor that takes a CharacterSheet
+				SheetData = new CharacterSheetData(token.Sheet),
 				HasVision = token.HasVision,
 				VisionRangeGameUnits = token.VisionRangeGameUnits,
-				NodeName = token.Name.ToString(), // Godot.StringName to string
-				Size = new Vector2Data(token.Size)
+				NodeName = token.Name.ToString(),
+				Size = new Vector2Data(token.Size),
+				OwningPlayerId = token.OwningPlayerId // Make sure this is included
 			};
 			rootData.Tokens.Add(tokenData);
 		}

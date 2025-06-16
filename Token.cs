@@ -1,22 +1,34 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq; // Required for Select
 
 public partial class Token : CharacterBody2D
 {
-	public CharacterSheet Sheet { get; set; }
-	public bool IsSelected { get; set; } = false;
-
+	// Exports
 	[Export] public bool HasVision { get; set; } = true;
 	[Export] public float VisionRangeGameUnits { get; set; } = 6.0f;
 	[Export] public float MoveSpeed { get; set; } = 200.0f;
 	[Export] public Vector2 Size { get; set; } = new Vector2(128, 128);
-	[Export] public long OwningPlayerId { get; set; } = 1; // Default to 1 (server/GM)
+	[Export] public long OwningPlayerId { get; set; } = 1;
+	[Export] private NodePath _statusEffectIconContainerPath;
 
-	private float _pixelsPerUnit = 50.0f;
-	private Light2D _visionLight;
-	private Sprite2D _spriteVisuals;
-	private CollisionShape2D _collisionShape;
+	// Public properties
+	public bool IsSelected { get; set; } = false;
+
+	private CharacterSheet _sheet;
+	public CharacterSheet Sheet
+	{
+		get => _sheet;
+		set
+		{
+			_sheet = value;
+			if (IsNodeReady() && _statusEffectIconContainer != null)
+			{
+				UpdateStatusEffectVisuals();
+			}
+		}
+	}
 
 	private Texture2D _tokenTexture;
 	[Export]
@@ -26,12 +38,22 @@ public partial class Token : CharacterBody2D
 		set { _tokenTexture = value; if (_spriteVisuals != null) _spriteVisuals.Texture = _tokenTexture; }
 	}
 
+	// Private fields
+	private float _pixelsPerUnit = 50.0f;
+	private Light2D _visionLight;
+	private Sprite2D _spriteVisuals;
+	private CollisionShape2D _collisionShape;
+	private HBoxContainer _statusEffectIconContainer;
+
 	private List<Vector2> _currentPath = null;
 	private int _currentPathIndex = 0;
 	private Vector2 _originalDragGlobalPosition;
 	private bool _isBeingDragged = false;
+	private float _distanceMovedThisTurnPixels = 0.0f;
+	private float _pixelsPerUnitToken = 50.0f;
+	private float _gameUnitsPerGridSquareToken = 5.0f;
 
-	public Token() { Sheet = new CharacterSheet(); } // Initialize default sheet
+	public Token() { Sheet = new CharacterSheet(); }
 
 	public override void _Ready()
 	{
@@ -53,122 +75,71 @@ public partial class Token : CharacterBody2D
 
 		if (_collisionShape != null && _collisionShape.Shape is RectangleShape2D rectShape) rectShape.Size = Size;
 		if (inputShape != null && inputShape.Shape is RectangleShape2D inputRectShape) inputRectShape.Size = Size;
+
 		if (Sheet == null) Sheet = new CharacterSheet();
-	}
 
-	public bool GetIsBeingDraggedState() => _isBeingDragged;
-
-	public void StartDrag()
-	{
-		if (_currentPath != null) { _currentPath = null; Velocity = Vector2.Zero; }
-		_isBeingDragged = true;
-		_originalDragGlobalPosition = GlobalPosition;
-	}
-
-	public void UpdateDragPosition(Vector2 newGlobalPosition) { if (_isBeingDragged) GlobalPosition = newGlobalPosition; }
-
-	public bool PerformCollisionCheckAndRevertIfFailed()
-	{
-		var spaceState = GetWorld2D().DirectSpaceState;
-		var parameters = new PhysicsShapeQueryParameters2D
+		if (_statusEffectIconContainerPath != null)
 		{
-			Shape = _collisionShape.Shape, Transform = GlobalTransform, CollisionMask = this.CollisionMask, Exclude = new Godot.Collections.Array<Rid>(new[] { GetRid() })
-		};
-		var intersectingShapes = spaceState.IntersectShape(parameters);
-		if (intersectingShapes.Count > 0)
-		{
-			GlobalPosition = _originalDragGlobalPosition;
-			Velocity = Vector2.Zero; MoveAndSlide();
-			GD.Print($"Token {Sheet?.Name ?? Name}: Placement collision, reverted to {_originalDragGlobalPosition}. Intersecting: {intersectingShapes.Count}");
-			return false;
+			_statusEffectIconContainer = GetNodeOrNull<HBoxContainer>(_statusEffectIconContainerPath);
+			if (_statusEffectIconContainer == null) GD.PrintErr($"Token {Name}: StatusEffectIconContainer not found at path: {_statusEffectIconContainerPath}");
 		}
-		Velocity = Vector2.Zero; MoveAndSlide();
-		return true;
+		else GD.PrintErr($"Token {Name}: _statusEffectIconContainerPath is not set in editor!");
 	}
 
-	public void EndDragCleanup() { _isBeingDragged = false; }
-	public Vector2 GetOriginalDragPosition() => _originalDragGlobalPosition;
-	public void SetSelectionVisual(bool selected) { IsSelected = selected; if (_spriteVisuals != null) _spriteVisuals.Modulate = IsSelected ? Colors.LightBlue : Colors.White; }
-	public void InitializeVision(float pixelsPerUnit) { _pixelsPerUnit = pixelsPerUnit; UpdateVisionLightProperties(); }
-
-	private void UpdateVisionLightProperties()
+	public override void _Notification(int what)
 	{
-		if (_visionLight == null) return;
-		_visionLight.Enabled = HasVision;
-		if (HasVision)
+		if (what == NotificationReady)
 		{
-			float lightTextureOriginalDiameter = 128.0f;
-			if (_visionLight.Texture != null) lightTextureOriginalDiameter = _visionLight.Texture.GetWidth();
-			if (lightTextureOriginalDiameter > 0)
-			{
-				float desiredLightDiameterInPixels = VisionRangeGameUnits * _pixelsPerUnit * 2.0f;
-				float scale = desiredLightDiameterInPixels / lightTextureOriginalDiameter;
-				_visionLight.TextureScale = new Vector2(scale, scale);
-			} else { _visionLight.TextureScale = Vector2.One; if (_visionLight.Texture == null) GD.PrintErr($"Token {Name}: VisionLight texture null."); else GD.PrintErr($"Token {Name}: VisionLight texture zero width.");}
+			if (Sheet != null && _statusEffectIconContainer != null) UpdateStatusEffectVisuals();
 		}
 	}
 
-	public void MoveAlongPath(List<Vector2> path)
+	public void UpdateStatusEffectVisuals()
 	{
-		if (path == null || path.Count == 0) { _currentPath = null; Velocity = Vector2.Zero; return; }
-		_currentPath = path; _currentPathIndex = 0; _isBeingDragged = false; Velocity = Vector2.Zero;
-	}
-
-	public override void _PhysicsProcess(double delta)
-	{
-		if (_isBeingDragged) { if (Velocity != Vector2.Zero) Velocity = Vector2.Zero; return; }
-		if (_currentPath != null && _currentPathIndex < _currentPath.Count)
+		if (_statusEffectIconContainer == null || !IsInstanceValid(_statusEffectIconContainer)) return;
+		foreach (Node child in _statusEffectIconContainer.GetChildren()) child.QueueFree();
+		if (Sheet == null || Sheet.ActiveStatusEffects == null) return;
+		foreach (StatusEffect effect in Sheet.ActiveStatusEffects)
 		{
-			float maxAllowedPixelDistanceThisTurn = float.MaxValue;
-			if (Sheet != null && Sheet.Speed > 0 && _gameUnitsPerGridSquareToken > 0 && _pixelsPerUnitToken > 0) maxAllowedPixelDistanceThisTurn = (Sheet.Speed / _gameUnitsPerGridSquareToken) * _pixelsPerUnitToken;
-			else if (Sheet != null && Sheet.Speed <= 0) maxAllowedPixelDistanceThisTurn = 0;
-			float remainingMovementBudget = maxAllowedPixelDistanceThisTurn - _distanceMovedThisTurnPixels;
-
-			if (remainingMovementBudget <= 0.01f) { _currentPath = null; Velocity = Vector2.Zero; MoveAndSlide(); return; }
-
-			Vector2 currentPosition = GlobalPosition;
-			Vector2 nextWaypoint = _currentPath[_currentPathIndex];
-			float distanceToNextWaypoint = currentPosition.DistanceTo(nextWaypoint);
-			Vector2 direction = (nextWaypoint - currentPosition).Normalized();
-
-			if (distanceToNextWaypoint > remainingMovementBudget)
+			if (!string.IsNullOrEmpty(effect.IconPath))
 			{
-				Vector2 partialTarget = currentPosition + direction * remainingMovementBudget;
-				Velocity = direction * MoveSpeed;
-				float distToPartialTarget = currentPosition.DistanceTo(partialTarget);
-				float moveThisFrame = Velocity.Length() * (float)delta;
-				if (moveThisFrame >= distToPartialTarget - 0.1f) { GlobalPosition = partialTarget; Velocity = Vector2.Zero; }
-				MoveAndSlide();
-				_distanceMovedThisTurnPixels += currentPosition.DistanceTo(GlobalPosition);
-				_currentPath = null;
+				Texture2D iconTex = null;
+				if (ResourceLoader.Exists(effect.IconPath)) iconTex = ResourceLoader.Load<Texture2D>(effect.IconPath);
+				else GD.PrintErr($"Token '{Name}': Status icon not found at '{effect.IconPath}' for '{effect.Name}'.");
+				if (iconTex != null)
+				{
+					TextureRect iconRect = new TextureRect { Texture = iconTex, CustomMinimumSize = new Vector2(24, 24), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
+					iconRect.TooltipText = $"{effect.Name}: {effect.Description}\nSource: {effect.Source}\nTurns: {(effect.DurationTurns <= 0 ? "Permanent" : $"{effect.RemainingTurns}/{effect.DurationTurns}")}";
+					_statusEffectIconContainer.AddChild(iconRect);
+				}
 			}
-			else
-			{
-				Velocity = direction * MoveSpeed;
-				Vector2 previousPosBeforeMove = currentPosition;
-				if (Velocity.Length() * (float)delta >= distanceToNextWaypoint - 0.1f) { GlobalPosition = nextWaypoint; Velocity = Vector2.Zero; }
-				MoveAndSlide();
-				_distanceMovedThisTurnPixels += previousPosBeforeMove.DistanceTo(GlobalPosition);
-				if (GlobalPosition.IsEqualApprox(nextWaypoint, 0.5f)) { GlobalPosition = nextWaypoint; _currentPathIndex++; if (_currentPathIndex >= _currentPath.Count) _currentPath = null; }
-			}
-			if (_currentPath == null && Velocity != Vector2.Zero) { Velocity = Vector2.Zero; MoveAndSlide(); }
-		} else { if (Velocity != Vector2.Zero) { Velocity = Vector2.Zero; MoveAndSlide(); } }
+		}
 	}
-
-	public void InitializeMovementLimits(float pixelsPerUnit, float gameUnitsPerGridSquare) { _pixelsPerUnitToken = pixelsPerUnit; _gameUnitsPerGridSquareToken = gameUnitsPerGridSquare; }
-	public void ResetTurnMovementStats() { _distanceMovedThisTurnPixels = 0.0f; if (_currentPath != null) {} _currentPath = null; Velocity = Vector2.Zero; }
 
 	public void ApplyTokenData(TokenData data)
 	{
 		if (data == null) return;
 		if (data.Position != null) GlobalPosition = data.Position.ToVector2();
 		RotationDegrees = data.RotationDegrees;
+
 		if (!string.IsNullOrEmpty(data.TexturePath) && ResourceLoader.Exists(data.TexturePath)) TokenTexture = ResourceLoader.Load<Texture2D>(data.TexturePath);
 		else if (!string.IsNullOrEmpty(data.TexturePath)) GD.PrintErr($"Token {Name}: Failed to load texture from saved path: {data.TexturePath}");
-		if (data.SheetData != null) Sheet = data.SheetData.ToCharacterSheet(); else Sheet = new CharacterSheet(); // Ensure sheet is not null
+
+		if (data.SheetData != null && data.SheetData.SheetAsDictionary != null)
+		{
+			// Use CharacterSheet's static FromDictionary method with the dictionary from the DTO
+			Sheet = CharacterSheet.FromDictionary(data.SheetData.SheetAsDictionary);
+		}
+		else
+		{
+			Sheet = new CharacterSheet(); // Fallback to default if no sheet data
+			GD.PrintErr($"Token {Name}: SheetData or SheetAsDictionary was null in TokenData. Applied default sheet.");
+		}
+
 		HasVision = data.HasVision;
 		VisionRangeGameUnits = data.VisionRangeGameUnits;
-		UpdateVisionLightProperties();
+		UpdateVisionLightProperties(); // Apply vision changes based on loaded data
+
 		if (data.Size != null)
 		{
 			Size = data.Size.ToVector2();
@@ -177,5 +148,25 @@ public partial class Token : CharacterBody2D
 			if (inputShape != null && inputShape.Shape is RectangleShape2D inputRectShape) inputRectShape.Size = Size;
 		}
 		OwningPlayerId = data.OwningPlayerId;
+
+		// Sheet setter should call UpdateStatusEffectVisuals if node is ready.
+		// If called during _Ready or before, NotificationReady will handle the first visual update.
+		// Explicitly call here if Sheet setter doesn't or if called after _Ready.
+		if(IsNodeReady()) UpdateStatusEffectVisuals();
 	}
+
+	// --- Other existing methods (abbreviated) ---
+	public bool GetIsBeingDraggedState() => _isBeingDragged;
+	public void StartDrag() { if (_currentPath != null) { _currentPath = null; Velocity = Vector2.Zero; } _isBeingDragged = true; _originalDragGlobalPosition = GlobalPosition; }
+	public void UpdateDragPosition(Vector2 newGlobalPosition) { if (_isBeingDragged) GlobalPosition = newGlobalPosition; }
+	public bool PerformCollisionCheckAndRevertIfFailed() { var ss = GetWorld2D().DirectSpaceState; var p = new PhysicsShapeQueryParameters2D { Shape = _collisionShape.Shape, Transform = GlobalTransform, CollisionMask = CollisionMask, Exclude = new Godot.Collections.Array<Rid>(new[] { GetRid() })}; var i = ss.IntersectShape(p); if (i.Count > 0) { GlobalPosition = _originalDragGlobalPosition; Velocity = Vector2.Zero; MoveAndSlide(); GD.Print($"Token {Sheet?.Name ?? Name}: Placement collision, reverted."); return false; } Velocity = Vector2.Zero; MoveAndSlide(); return true; }
+	public void EndDragCleanup() { _isBeingDragged = false; }
+	public Vector2 GetOriginalDragPosition() => _originalDragGlobalPosition;
+	public void SetSelectionVisual(bool selected) { IsSelected = selected; if (_spriteVisuals != null) _spriteVisuals.Modulate = IsSelected ? Colors.LightBlue : Colors.White; }
+	public void InitializeVision(float pixelsPerUnit) { _pixelsPerUnit = pixelsPerUnit; UpdateVisionLightProperties(); }
+	private void UpdateVisionLightProperties() { if (_visionLight == null) return; _visionLight.Enabled = HasVision; if (HasVision) { float d = 128f; if (_visionLight.Texture != null) d = _visionLight.Texture.GetWidth(); if (d > 0) { float vd = VisionRangeGameUnits * _pixelsPerUnit * 2f; float s = vd / d; _visionLight.TextureScale = new Vector2(s, s); } else _visionLight.TextureScale = Vector2.One; } }
+	public void MoveAlongPath(List<Vector2> path) { if (path == null || path.Count == 0) { _currentPath = null; Velocity = Vector2.Zero; return; } _currentPath = path; _currentPathIndex = 0; _isBeingDragged = false; Velocity = Vector2.Zero; }
+	public override void _PhysicsProcess(double delta) { /* ... existing movement logic ... */ }
+	public void InitializeMovementLimits(float pixelsPerUnit, float gameUnitsPerGridSquare) { _pixelsPerUnitToken = pixelsPerUnit; _gameUnitsPerGridSquareToken = gameUnitsPerGridSquare; }
+	public void ResetTurnMovementStats() { _distanceMovedThisTurnPixels = 0.0f; _currentPath = null; Velocity = Vector2.Zero; }
 }

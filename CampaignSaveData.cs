@@ -48,59 +48,60 @@ public class ColorData
 }
 
 // --- Character Sheet & Token ---
-public class CharacterSheetData
+public class CharacterSheetData // This DTO will now primarily hold the serialized dictionary of the CharacterSheet
 {
-	public string Name { get; set; } = "Unnamed";
-	public int MaxHealthPoints { get; set; } = 10;
-	public int CurrentHealthPoints { get; set; } = 10;
-	public int ArmorClass { get; set; } = 10;
-	public int Speed { get; set; } = 30;
-	public Godot.Collections.Dictionary<string, string> CustomProperties { get; set; } = new Godot.Collections.Dictionary<string, string>();
+	public Godot.Collections.Dictionary SheetAsDictionary { get; set; }
+	// We can keep other direct fields if we want quick access to some sheet data without parsing the dictionary,
+	// but for full state, SheetAsDictionary is the source of truth from CharacterSheet's own serialization.
+	// For this task, let's assume SheetAsDictionary is enough. If we needed Name for quick access:
+	// public string Name { get; set; }
 
-	public CharacterSheetData() { }
-	public CharacterSheetData(CharacterSheet sheet) // Assumes CharacterSheet class exists
+	public CharacterSheetData() { SheetAsDictionary = new Godot.Collections.Dictionary(); }
+
+	// Constructor to create DTO from a live CharacterSheet
+	public CharacterSheetData(CharacterSheet liveSheet)
 	{
-		if (sheet == null) return;
-		Name = sheet.Name;
-		MaxHealthPoints = sheet.MaxHealthPoints;
-		CurrentHealthPoints = sheet.CurrentHealthPoints;
-		ArmorClass = sheet.ArmorClass;
-		Speed = sheet.Speed;
-		CustomProperties = new Godot.Collections.Dictionary<string, string>(sheet.CustomProperties); // Make a copy
+		SheetAsDictionary = new Godot.Collections.Dictionary();
+		if (liveSheet != null)
+		{
+			liveSheet.ToDictionary(SheetAsDictionary); // Populate the dictionary
+			// If Name was a direct property: Name = liveSheet.Name;
+		}
 	}
 
+	// Method to convert DTO back to a live CharacterSheet
 	public CharacterSheet ToCharacterSheet()
 	{
-		var sheet = new CharacterSheet
-		{
-			Name = this.Name,
-			MaxHealthPoints = this.MaxHealthPoints,
-			CurrentHealthPoints = this.CurrentHealthPoints,
-			ArmorClass = this.ArmorClass,
-			Speed = this.Speed,
-			CustomProperties = new Dictionary<string, string>(this.CustomProperties.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value.ToString()))
-		};
-		return sheet;
+		// If Name was a direct property and needs to be passed to FromDictionary or set after:
+		// var sheet = CharacterSheet.FromDictionary(SheetAsDictionary);
+		// sheet.Name = this.Name; // If FromDictionary doesn't handle Name from the dict itself
+		// return sheet;
+		return CharacterSheet.FromDictionary(SheetAsDictionary);
 	}
 
-	public Godot.Collections.Dictionary ToDictionary() => new Godot.Collections.Dictionary
+	public Godot.Collections.Dictionary ToDictionary()
 	{
-		{ "Name", Name }, { "MaxHP", MaxHealthPoints }, { "CurHP", CurrentHealthPoints },
-		{ "AC", ArmorClass }, { "Speed", Speed }, { "CustomProps", CustomProperties }
-	};
+		// The DTO itself serializes to a dictionary containing the SheetAsDictionary
+		return new Godot.Collections.Dictionary
+		{
+			{ "SheetAsDictionary", SheetAsDictionary }
+			// If Name was a direct property: { "Name", Name }
+		};
+	}
 
 	public static CharacterSheetData FromDictionary(Godot.Collections.Dictionary dict)
 	{
 		var data = new CharacterSheetData();
-		data.Name = dict.GetOrDefault("Name", "Unnamed").ToString();
-		data.MaxHealthPoints = dict.GetOrDefault("MaxHP", 10).AsInt32();
-		data.CurrentHealthPoints = dict.GetOrDefault("CurHP", 10).AsInt32();
-		data.ArmorClass = dict.GetOrDefault("AC", 10).AsInt32();
-		data.Speed = dict.GetOrDefault("Speed", 30).AsInt32();
-		if (dict.ContainsKey("CustomProps") && dict["CustomProps"].VariantType == Variant.Type.Dictionary)
+		if (dict.ContainsKey("SheetAsDictionary") && dict["SheetAsDictionary"].VariantType == Variant.Type.Dictionary)
 		{
-			data.CustomProperties = dict["CustomProps"].AsGodotDictionary<string, string>();
+			data.SheetAsDictionary = dict["SheetAsDictionary"].AsGodotDictionary();
 		}
+		else
+		{
+			data.SheetAsDictionary = new Godot.Collections.Dictionary(); // Empty if not found
+			GD.PrintErr("CharacterSheetData.FromDictionary: 'SheetAsDictionary' key missing or not a Dictionary.");
+		}
+		// If Name was a direct property: data.Name = dict.GetOrDefault("Name", "Unnamed Sheet DTO").ToString();
 		return data;
 	}
 }
