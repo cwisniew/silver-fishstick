@@ -35,24 +35,65 @@ clip_text = true # Clip if name is too long
 layout_mode = 2
 custom_minimum_size = Vector2(0, 4) # Add some spacing
 
+[node name="PositionHeaderLabel" type="Label" parent="PropertiesVBox"]
+layout_mode = 2
+text = "Position:"
+# Consider adding a Theme Override for font style (e.g., bold) or alignment if desired
+
+[node name="PositionXHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center children vertically, similar to RotationHBox
+
+[node name="LabelPositionX" type="Label" parent="PropertiesVBox/PositionXHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0) # Match other property labels if needed for alignment
+text = "Pos X:"
+
+[node name="PositionXEdit" type="LineEdit" parent="PropertiesVBox/PositionXHBox"]
+name = "PositionXEdit"
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand
+custom_minimum_size = Vector2(100, 0) # Similar to RotationSpinBox
+placeholder_text = "0.00"
+# virtual_keyboard_type =LineEdit.VirtualKeyboardType.NumbersAndPunctuation # If targeting mobile
+
+[node name="PositionYHBox" type="HBoxContainer" parent="PropertiesVBox"]
+layout_mode = 2
+alignment = 1 # Center children vertically
+
+[node name="LabelPositionY" type="Label" parent="PropertiesVBox/PositionYHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0) # Match other property labels
+text = "Pos Y:"
+
+[node name="PositionYEdit" type="LineEdit" parent="PropertiesVBox/PositionYHBox"]
+name = "PositionYEdit"
+layout_mode = 2
+size_flags_horizontal = 3 # FillExpand
+custom_minimum_size = Vector2(100, 0)
+placeholder_text = "0.00"
+# virtual_keyboard_type =LineEdit.VirtualKeyboardType.NumbersAndPunctuation
+
+[node name="HSeparator_PosRot" type="HSeparator" parent="PropertiesVBox"] # Optional separator
+layout_mode = 2
+custom_minimum_size = Vector2(0, 4)
+
+
 [node name="RotationHBox" type="HBoxContainer" parent="PropertiesVBox"]
 layout_mode = 2
 alignment = 1 # Center children vertically
 
 [node name="LabelRotation" type="Label" parent="PropertiesVBox/RotationHBox"]
 layout_mode = 2
+custom_minimum_size = Vector2(70, 0) # Consistent label width
 text = "Rotation:"
 
-[node name="RotationSpinBox" type="SpinBox" parent="PropertiesVBox/RotationHBox"]
+[node name="RotationEdit" type="LineEdit" parent="PropertiesVBox/RotationHBox"]
+name = "RotationEdit"
 layout_mode = 2
 size_flags_horizontal = 3 # FillExpand
 custom_minimum_size = Vector2(100, 0)
-min_value = -3600.0
-max_value = 3600.0
-step = 1.0 # Could be 5.0 or 15.0 for coarser control
-value = 0.0
-suffix = "deg"
-rounded = false # Allow float values if step is float
+placeholder_text = "0.00 deg"
 
 [node name="ScaleLabelTitle" type="Label" parent="PropertiesVBox"] # Optional section label
 layout_mode = 2
@@ -65,19 +106,16 @@ alignment = 1
 
 [node name="LabelScaleX" type="Label" parent="PropertiesVBox/ScaleXHBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(30, 0)
-text = " X:"
-alignment = 2 # Right align " X:" text
+custom_minimum_size = Vector2(70, 0) # Consistent label width
+text = "Scale X:"
+# alignment = 0 # Default Left alignment
 
-[node name="ScaleXSpinBox" type="SpinBox" parent="PropertiesVBox/ScaleXHBox"]
+[node name="ScaleXEdit" type="LineEdit" parent="PropertiesVBox/ScaleXHBox"]
+name = "ScaleXEdit"
 layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(80, 0)
-min_value = 0.01
-max_value = 100.0
-step = 0.05
-value = 1.0
-rounded = false
+size_flags_horizontal = 3 # FillExpand
+custom_minimum_size = Vector2(100, 0)
+placeholder_text = "1.00"
 
 [node name="ScaleYHBox" type="HBoxContainer" parent="PropertiesVBox"]
 layout_mode = 2
@@ -85,19 +123,16 @@ alignment = 1
 
 [node name="LabelScaleY" type="Label" parent="PropertiesVBox/ScaleYHBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(30, 0)
-text = " Y:"
-alignment = 2
+custom_minimum_size = Vector2(70, 0) # Consistent label width
+text = "Scale Y:"
+# alignment = 0 # Default Left alignment
 
-[node name="ScaleYSpinBox" type="SpinBox" parent="PropertiesVBox/ScaleYHBox"]
+[node name="ScaleYEdit" type="LineEdit" parent="PropertiesVBox/ScaleYHBox"]
+name = "ScaleYEdit"
 layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(80, 0)
-min_value = 0.01
-max_value = 100.0
-step = 0.05
-value = 1.0
-rounded = false
+size_flags_horizontal = 3 # FillExpand
+custom_minimum_size = Vector2(100, 0)
+placeholder_text = "1.00"
 
 [node name="HSeparator2" type="HSeparator" parent="PropertiesVBox"]
 layout_mode = 2
