@@ -1,0 +1,228 @@
+[gd_scene load_steps=2 format=3 uid="uid://token_details_editor_panel"] # New UID
+
+[ext_resource type="Script" path="res://TokenDetailsEditorPanel.cs" id="1_details_editor_cs"] # Updated script path
+
+[node name="TokenDetailsEditorPanel" type="PanelContainer" node_paths=PackedStringArray("selectedTokenNameLabel", "currentEffectsList", "removeSelectedEffectButton", "effectNameInput", "effectDescriptionInput", "effectDurationInput", "effectIconPathInput", "effectSourceInput", "addEffectButton")] # Renamed root node
+anchors_preset = 1
+offset_right = 350.0
+offset_bottom = 450.0
+custom_minimum_size = Vector2(300, 400)
+visible = false
+script = ExtResource("1_details_editor_cs")
+# NodePaths will be updated later when the full structure is in TokenDetailsEditorPanel.cs
+# For now, keep existing ones, they will be reparented.
+selectedTokenNameLabel = NodePath("TabContainer/StatusEffects/VBoxContainer/SelectedTokenNameLabel")
+currentEffectsList = NodePath("TabContainer/StatusEffects/VBoxContainer/CurrentEffectsList")
+removeSelectedEffectButton = NodePath("TabContainer/StatusEffects/VBoxContainer/RemoveSelectedEffectButton")
+effectNameInput = NodePath("TabContainer/StatusEffects/VBoxContainer/GridInputs/EffectNameInput")
+effectDescriptionInput = NodePath("TabContainer/StatusEffects/VBoxContainer/GridInputs/EffectDescriptionInput")
+effectDurationInput = NodePath("TabContainer/StatusEffects/VBoxContainer/GridInputs/EffectDurationInput")
+effectIconPathInput = NodePath("TabContainer/StatusEffects/VBoxContainer/GridInputs/EffectIconPathInput")
+effectSourceInput = NodePath("TabContainer/StatusEffects/VBoxContainer/GridInputs/EffectSourceInput")
+addEffectButton = NodePath("TabContainer/StatusEffects/VBoxContainer/AddEffectButton")
+# New NodePaths for inventory will be added when TokenDetailsEditorPanel.cs is updated
+
+[node name="TabContainer" type="TabContainer" parent="."]
+layout_mode = 2
+
+[node name="StatusEffects" type="PanelContainer" parent="TabContainer"] # Tab 1
+name = "Status Effects" # This sets the tab title
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/StatusEffects"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="TabContainer/StatusEffects/VBoxContainer"]
+layout_mode = 2
+text = "Token Details" # Updated text for the panel
+horizontal_alignment = 1
+
+[node name="SelectedTokenNameLabel" type="Label" parent="TabContainer/StatusEffects/VBoxContainer"]
+layout_mode = 2
+text = "Selected Token: None"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="CurrentEffectsList" type="ItemList" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 100)
+size_flags_vertical = 3
+
+[node name="RemoveSelectedEffectButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Remove Selected Effect"
+disabled = true
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Add/Edit Effect:"
+horizontal_alignment = 1
+
+[node name="GridInputs" type="GridContainer" parent="VBoxContainer"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelName" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Name:"
+size_flags_horizontal = 3
+
+[node name="EffectNameInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Blinded"
+size_flags_horizontal = 3
+
+[node name="LabelDesc" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Description:"
+size_flags_horizontal = 3
+
+[node name="EffectDescriptionInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Disadvantage on attacks"
+size_flags_horizontal = 3
+
+[node name="LabelDuration" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Duration (turns):"
+size_flags_horizontal = 3
+
+[node name="EffectDurationInput" type="SpinBox" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+min_value = -1.0
+max_value = 999.0
+value = 0.0
+allow_greater = true
+size_flags_horizontal = 3
+
+[node name="LabelIcon" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Icon Path:"
+size_flags_horizontal = 3
+
+[node name="EffectIconPathInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "res://assets/icons/status/blinded.png.txt"
+size_flags_horizontal = 3
+
+[node name="LabelSource" type="Label" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+text = "Source:"
+size_flags_horizontal = 3
+
+[node name="EffectSourceInput" type="LineEdit" parent="VBoxContainer/GridInputs"]
+layout_mode = 2
+placeholder_text = "e.g., Wizard Spell"
+size_flags_horizontal = 3
+
+[node name="AddEffectButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Add/Update Effect"
+disabled = true
+custom_minimum_size = Vector2(150,0)
+size_flags_horizontal = 4
+
+[node name="Inventory" type="PanelContainer" parent="TabContainer"] # Tab 2
+name = "Inventory" # Tab title
+layout_mode = 2
+
+[node name="VBoxInventory" type="VBoxContainer" parent="TabContainer/Inventory"]
+layout_mode = 2
+
+[node name="InventoryDisplayList" type="ItemList" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+size_flags_vertical = 3 # Expand
+
+[node name="HBoxItemActions" type="HBoxContainer" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+alignment = 1 # Center
+
+[node name="RemoveSelectedItemButton" type="Button" parent="TabContainer/Inventory/VBoxInventory/HBoxItemActions"]
+layout_mode = 2
+text = "Remove Selected"
+disabled = true
+
+[node name="EquipSelectedItemButton" type="Button" parent="TabContainer/Inventory/VBoxInventory/HBoxItemActions"]
+layout_mode = 2
+text = "Equip/Unequip"
+disabled = true
+
+[node name="HSeparatorInv" type="HSeparator" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="LabelAddItem" type="Label" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+text = "Add New Item:"
+horizontal_alignment = 1
+
+[node name="GridItemInputs" type="GridContainer" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+columns = 2
+
+[node name="LabelItemName" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Name:"
+
+[node name="ItemNameInput" type="LineEdit" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "e.g., Healing Potion"
+
+[node name="LabelItemDesc" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Description:"
+
+[node name="ItemDescriptionInput" type="LineEdit" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LabelItemQty" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Quantity:"
+
+[node name="ItemQuantityInput" type="SpinBox" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+min_value = 1.0
+value = 1.0
+allow_lesser = false # Quantity must be at least 1
+size_flags_horizontal = 3
+
+[node name="LabelItemType" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Type:"
+
+[node name="ItemTypeInput" type="LineEdit" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "e.g., Potion, Weapon"
+
+[node name="LabelItemWeight" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Weight:"
+
+[node name="ItemWeightInput" type="SpinBox" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+step = 0.1
+allow_lesser = true # Weight can be 0 or more
+size_flags_horizontal = 3
+
+[node name="LabelItemEquippable" type="Label" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+text = "Equippable:"
+
+[node name="ItemIsEquippableCheckbox" type="CheckBox" parent="TabContainer/Inventory/VBoxInventory/GridItemInputs"]
+layout_mode = 2
+size_flags_horizontal = 0 # Don't expand, let it be its natural size
+
+[node name="AddItemButton" type="Button" parent="TabContainer/Inventory/VBoxInventory"]
+layout_mode = 2
+text = "Add Item to Inventory"
+custom_minimum_size = Vector2(150,0)
+size_flags_horizontal = 4 # Center
+disabled = true

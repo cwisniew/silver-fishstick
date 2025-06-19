@@ -351,9 +351,9 @@ text = "Mod HP (Host)"
 layout_mode = 2
 text = "Assign Owner (Host)"
 
-[node name="ToggleTokenFxEditorButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"] # Added to DrawingControls for now
+[node name="ToggleTokenDetailsEditorButton" type="Button" parent="CombatTrackerPanel/VBoxContainer/DrawingControlsHBox"] # Renamed, Text Updated
 layout_mode = 2
-text = "Token FX"
+text = "Token Details"
 
 
 [node name="PlayerListDisplay" type="ItemList" parent="NetworkPanel/VBoxContainer"]
